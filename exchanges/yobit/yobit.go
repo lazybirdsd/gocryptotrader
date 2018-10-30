@@ -66,6 +66,8 @@ func (y *Yobit) SetDefaults() {
 	y.AssetTypes = []string{ticker.Spot}
 	y.SupportsAutoPairUpdating = false
 	y.SupportsRESTTickerBatching = true
+	y.SupportsRESTAPI = true
+	y.SupportsWebsocketAPI = false
 	y.Requester = request.New(y.Name,
 		request.NewRateLimit(time.Second, yobitAuthRate),
 		request.NewRateLimit(time.Second, yobitUnauthRate),
@@ -74,7 +76,6 @@ func (y *Yobit) SetDefaults() {
 	y.APIUrl = y.APIUrlDefault
 	y.APIUrlSecondaryDefault = apiPrivateURL
 	y.APIUrlSecondary = y.APIUrlSecondaryDefault
-	y.WebsocketInit()
 }
 
 // Setup sets exchange configuration parameters for Yobit
@@ -87,7 +88,6 @@ func (y *Yobit) Setup(exch config.ExchangeConfig) {
 		y.SetAPIKeys(exch.APIKey, exch.APISecret, "", false)
 		y.RESTPollingDelay = exch.RESTPollingDelay
 		y.Verbose = exch.Verbose
-		y.Websocket.SetWsStatusAndConnection(exch.Websocket)
 		y.BaseCurrencies = exch.BaseCurrencies
 		y.AvailablePairs = exch.AvailablePairs
 		y.EnabledPairs = exch.EnabledPairs

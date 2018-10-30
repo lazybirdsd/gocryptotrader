@@ -70,13 +70,13 @@ func (b *BTCC) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, er
 	return ticker.Price{}, common.ErrFunctionNotSupported
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (b *BTCC) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (b *BTCC) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	return ticker.Price{}, common.ErrFunctionNotSupported
 }
 
-// GetOrderbookEx returns the orderbook for a currency pair
-func (b *BTCC) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns the orderbook for a currency pair
+func (b *BTCC) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	return orderbook.Base{}, common.ErrFunctionNotSupported
 }
 

@@ -74,8 +74,8 @@ func (o *OKGroup) UpdateTicker(p currency.Pair, assetType string) (tickerData ti
 	return
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (o *OKGroup) GetTickerPrice(p currency.Pair, assetType string) (tickerData ticker.Price, err error) {
+// FetchTicker returns the ticker for a currency pair
+func (o *OKGroup) FetchTicker(p currency.Pair, assetType string) (tickerData ticker.Price, err error) {
 	tickerData, err = ticker.GetTicker(o.GetName(), p, assetType)
 	if err != nil {
 		return o.UpdateTicker(p, assetType)
@@ -83,8 +83,8 @@ func (o *OKGroup) GetTickerPrice(p currency.Pair, assetType string) (tickerData 
 	return
 }
 
-// GetOrderbookEx returns orderbook base on the currency pair
-func (o *OKGroup) GetOrderbookEx(p currency.Pair, assetType string) (resp orderbook.Base, err error) {
+// FetchOrderbook returns orderbook base on the currency pair
+func (o *OKGroup) FetchOrderbook(p currency.Pair, assetType string) (resp orderbook.Base, err error) {
 	ob, err := orderbook.Get(o.GetName(), p, assetType)
 	if err != nil {
 		return o.UpdateOrderbook(p, assetType)

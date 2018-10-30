@@ -97,8 +97,8 @@ func (g *Gemini) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, 
 	return ticker.GetTicker(g.Name, p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (g *Gemini) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (g *Gemini) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tickerNew, err := ticker.GetTicker(g.GetName(), p, assetType)
 	if err != nil {
 		return g.UpdateTicker(p, assetType)
@@ -106,8 +106,8 @@ func (g *Gemini) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price
 	return tickerNew, nil
 }
 
-// GetOrderbookEx returns orderbook base on the currency pair
-func (g *Gemini) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns orderbook base on the currency pair
+func (g *Gemini) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	ob, err := orderbook.Get(g.GetName(), p, assetType)
 	if err != nil {
 		return g.UpdateOrderbook(p, assetType)

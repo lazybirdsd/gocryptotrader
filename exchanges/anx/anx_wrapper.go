@@ -158,8 +158,8 @@ func (a *ANX) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, err
 	return ticker.GetTicker(a.Name, p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (a *ANX) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (a *ANX) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tickerNew, err := ticker.GetTicker(a.GetName(), p, assetType)
 	if err != nil {
 		return a.UpdateTicker(p, assetType)
@@ -167,8 +167,8 @@ func (a *ANX) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, e
 	return tickerNew, nil
 }
 
-// GetOrderbookEx returns the orderbook for a currency pair
-func (a *ANX) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns the orderbook for a currency pair
+func (a *ANX) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	ob, err := orderbook.Get(a.GetName(), p, assetType)
 	if err != nil {
 		return a.UpdateOrderbook(p, assetType)

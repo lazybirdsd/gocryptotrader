@@ -87,8 +87,8 @@ func (e *EXMO) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, er
 	return ticker.GetTicker(e.Name, p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (e *EXMO) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (e *EXMO) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tick, err := ticker.GetTicker(e.GetName(), p, assetType)
 	if err != nil {
 		return e.UpdateTicker(p, assetType)
@@ -96,8 +96,8 @@ func (e *EXMO) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, 
 	return tick, nil
 }
 
-// GetOrderbookEx returns the orderbook for a currency pair
-func (e *EXMO) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns the orderbook for a currency pair
+func (e *EXMO) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	ob, err := orderbook.Get(e.GetName(), p, assetType)
 	if err != nil {
 		return e.UpdateOrderbook(p, assetType)

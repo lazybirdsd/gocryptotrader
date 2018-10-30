@@ -627,7 +627,7 @@ func (o *OKGroup) WsProcessPartialOrderBook(wsEventData *WebsocketDataWrapper, i
 // WsProcessUpdateOrderbook updates an existing orderbook using websocket data
 // After merging WS data, it will sort, validate and finally update the existing orderbook
 func (o *OKGroup) WsProcessUpdateOrderbook(wsEventData *WebsocketDataWrapper, instrument currency.Pair, tableName string) error {
-	internalOrderbook, err := o.GetOrderbookEx(instrument, o.GetAssetTypeFromTableName(tableName))
+	internalOrderbook, err := o.FetchOrderbook(instrument, o.GetAssetTypeFromTableName(tableName))
 	if err != nil {
 		return errors.New("orderbook nil, could not load existing orderbook")
 	}

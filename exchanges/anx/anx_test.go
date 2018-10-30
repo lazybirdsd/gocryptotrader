@@ -36,9 +36,6 @@ func TestSetDefaults(t *testing.T) {
 	if a.Verbose {
 		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
 	}
-	if a.Websocket.IsEnabled() {
-		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
-	}
 	if a.RESTPollingDelay != 10 {
 		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
 	}
@@ -65,9 +62,6 @@ func TestSetup(t *testing.T) {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
 	if a.Verbose {
-		t.Error("Test Failed - ANX Setup() incorrect values set")
-	}
-	if a.Websocket.IsEnabled() {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
 	if len(a.BaseCurrencies) == 0 {

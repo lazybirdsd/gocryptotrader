@@ -115,8 +115,8 @@ func (k *Kraken) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, 
 	return ticker.GetTicker(k.GetName(), p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (k *Kraken) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (k *Kraken) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tickerNew, err := ticker.GetTicker(k.GetName(), p, assetType)
 	if err != nil {
 		return k.UpdateTicker(p, assetType)
@@ -124,8 +124,8 @@ func (k *Kraken) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price
 	return tickerNew, nil
 }
 
-// GetOrderbookEx returns orderbook base on the currency pair
-func (k *Kraken) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns orderbook base on the currency pair
+func (k *Kraken) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	ob, err := orderbook.Get(k.GetName(), p, assetType)
 	if err != nil {
 		return k.UpdateOrderbook(p, assetType)

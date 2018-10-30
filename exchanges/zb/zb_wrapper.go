@@ -27,7 +27,6 @@ func (z *ZB) Start(wg *sync.WaitGroup) {
 // Run implements the OKEX wrapper
 func (z *ZB) Run() {
 	if z.Verbose {
-		log.Debugf("%s Websocket: %s. (url: %s).\n", z.GetName(), common.IsEnabled(z.Websocket.IsEnabled()), z.WebsocketURL)
 		log.Debugf("%s polling delay: %ds.\n", z.GetName(), z.RESTPollingDelay)
 		log.Debugf("%s %d currencies enabled: %s.\n", z.GetName(), len(z.EnabledPairs), z.EnabledPairs)
 	}
@@ -85,8 +84,8 @@ func (z *ZB) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, erro
 	return ticker.GetTicker(z.Name, p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (z *ZB) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (z *ZB) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tickerNew, err := ticker.GetTicker(z.GetName(), p, assetType)
 	if err != nil {
 		return z.UpdateTicker(p, assetType)
@@ -94,11 +93,11 @@ func (z *ZB) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, er
 	return tickerNew, nil
 }
 
-// GetOrderbookEx returns orderbook base on the currency pair
-func (z *ZB) GetOrderbookEx(currency currency.Pair, assetType string) (orderbook.Base, error) {
-	ob, err := orderbook.Get(z.GetName(), currency, assetType)
+// FetchOrderbook returns orderbook base on the currency pair
+func (z *ZB) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
+	ob, err := orderbook.Get(z.GetName(), p, assetType)
 	if err != nil {
-		return z.UpdateOrderbook(currency, assetType)
+		return z.UpdateOrderbook(p, assetType)
 	}
 	return ob, nil
 }

@@ -48,6 +48,8 @@ func (o *OKCoin) SetDefaults() {
 	o.APIUrlDefault = okCoinAPIURL
 	o.APIUrl = okCoinAPIURL
 	o.AssetTypes = []string{ticker.Spot}
+	o.SupportsRESTAPI = true
+	o.SupportsWebsocketAPI = true
 	o.WebsocketInit()
 	o.WebsocketURL = okCoinWebsocketURL
 	o.APIVersion = okCoinAPIVersion

@@ -86,6 +86,8 @@ func (b *Binance) SetDefaults() {
 	b.SupportsRESTTickerBatching = true
 	b.APIWithdrawPermissions = exchange.AutoWithdrawCrypto |
 		exchange.NoFiatWithdrawals
+	b.SupportsRESTAPI = true
+	b.SupportsWebsocketAPI = true
 	b.SetValues()
 	b.Requester = request.New(b.Name,
 		request.NewRateLimit(time.Second, binanceAuthRate),

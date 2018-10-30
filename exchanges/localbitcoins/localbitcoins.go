@@ -128,13 +128,14 @@ func (l *LocalBitcoins) SetDefaults() {
 	l.ConfigCurrencyPairFormat.Uppercase = true
 	l.SupportsAutoPairUpdating = true
 	l.SupportsRESTTickerBatching = true
+	l.SupportsRESTAPI = true
+	l.SupportsWebsocketAPI = false
 	l.Requester = request.New(l.Name,
 		request.NewRateLimit(time.Millisecond*500, localbitcoinsAuthRate),
 		request.NewRateLimit(time.Millisecond*500, localbitcoinsUnauthRate),
 		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout))
 	l.APIUrlDefault = localbitcoinsAPIURL
 	l.APIUrl = l.APIUrlDefault
-	l.WebsocketInit()
 }
 
 // Setup sets exchange configuration parameters

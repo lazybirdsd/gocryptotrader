@@ -82,7 +82,7 @@ func main() {
 
 	displayCurrency = cfg.FiatDisplayCurrency
 	port := portfolio.Base{}
-	port.SeedPortfolio(cfg.Portfolio)
+	port.Seed(cfg.Portfolio)
 	result := port.GetPortfolioSummary()
 
 	log.Println("Fetched portfolio data.")

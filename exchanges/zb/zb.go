@@ -67,6 +67,8 @@ func (z *ZB) SetDefaults() {
 	z.AssetTypes = []string{ticker.Spot}
 	z.SupportsAutoPairUpdating = true
 	z.SupportsRESTTickerBatching = true
+	z.SupportsRESTAPI = true
+	z.SupportsWebsocketAPI = false
 	z.Requester = request.New(z.Name,
 		request.NewRateLimit(time.Second*10, zbAuthRate),
 		request.NewRateLimit(time.Second*10, zbUnauthRate),
@@ -94,7 +96,6 @@ func (z *ZB) Setup(exch config.ExchangeConfig) {
 		z.SetHTTPClientUserAgent(exch.HTTPUserAgent)
 		z.RESTPollingDelay = exch.RESTPollingDelay
 		z.Verbose = exch.Verbose
-		z.Websocket.SetWsStatusAndConnection(exch.Websocket)
 		z.BaseCurrencies = exch.BaseCurrencies
 		z.AvailablePairs = exch.AvailablePairs
 		z.EnabledPairs = exch.EnabledPairs
@@ -126,6 +127,7 @@ func (z *ZB) Setup(exch config.ExchangeConfig) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		z.Websocket.SetWsStatusAndConnection(exch.Websocket)
 	}
 }
 

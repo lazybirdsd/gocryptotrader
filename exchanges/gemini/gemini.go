@@ -115,6 +115,8 @@ func (g *Gemini) SetDefaults() {
 	g.AssetTypes = []string{ticker.Spot}
 	g.SupportsAutoPairUpdating = true
 	g.SupportsRESTTickerBatching = false
+	g.SupportsRESTAPI = true
+	g.SupportsWebsocketAPI = false
 	g.Requester = request.New(g.Name,
 		request.NewRateLimit(time.Minute, geminiAuthRate),
 		request.NewRateLimit(time.Minute, geminiUnauthRate),

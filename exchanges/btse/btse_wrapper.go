@@ -80,8 +80,8 @@ func (b *BTSE) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, er
 	return ticker.GetTicker(b.Name, p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (b *BTSE) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (b *BTSE) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tickerNew, err := ticker.GetTicker(b.GetName(), p, assetType)
 	if err != nil {
 		return b.UpdateTicker(p, assetType)
@@ -89,8 +89,8 @@ func (b *BTSE) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, 
 	return tickerNew, nil
 }
 
-// GetOrderbookEx returns orderbook base on the currency pair
-func (b *BTSE) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns orderbook base on the currency pair
+func (b *BTSE) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	ob, err := orderbook.Get(b.GetName(), p, assetType)
 	if err != nil {
 		return b.UpdateOrderbook(p, assetType)

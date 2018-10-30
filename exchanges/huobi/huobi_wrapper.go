@@ -125,8 +125,8 @@ func (h *HUOBI) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, e
 	return ticker.GetTicker(h.Name, p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (h *HUOBI) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (h *HUOBI) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tickerNew, err := ticker.GetTicker(h.GetName(), p, assetType)
 	if err != nil {
 		return h.UpdateTicker(p, assetType)
@@ -134,8 +134,8 @@ func (h *HUOBI) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price,
 	return tickerNew, nil
 }
 
-// GetOrderbookEx returns orderbook base on the currency pair
-func (h *HUOBI) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns orderbook base on the currency pair
+func (h *HUOBI) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	ob, err := orderbook.Get(h.GetName(), p, assetType)
 	if err != nil {
 		return h.UpdateOrderbook(p, assetType)

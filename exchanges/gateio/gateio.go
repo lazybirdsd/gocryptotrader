@@ -66,6 +66,8 @@ func (g *Gateio) SetDefaults() {
 	g.AssetTypes = []string{ticker.Spot}
 	g.SupportsAutoPairUpdating = true
 	g.SupportsRESTTickerBatching = true
+	g.SupportsRESTAPI = true
+	g.SupportsWebsocketAPI = false
 	g.Requester = request.New(g.Name,
 		request.NewRateLimit(time.Second*10, gateioAuthRate),
 		request.NewRateLimit(time.Second*10, gateioUnauthRate),

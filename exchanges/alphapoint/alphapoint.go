@@ -58,6 +58,8 @@ func (a *Alphapoint) SetDefaults() {
 	a.APIWithdrawPermissions = exchange.WithdrawCryptoWith2FA |
 		exchange.AutoWithdrawCryptoWithAPIPermission |
 		exchange.NoFiatWithdrawals
+	a.SupportsRESTAPI = true
+	a.SupportsWebsocketAPI = true
 	a.Requester = request.New(a.Name,
 		request.NewRateLimit(time.Minute*10, alphapointAuthRate),
 		request.NewRateLimit(time.Minute*10, alphapointUnauthRate),

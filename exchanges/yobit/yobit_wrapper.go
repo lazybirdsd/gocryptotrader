@@ -29,7 +29,6 @@ func (y *Yobit) Start(wg *sync.WaitGroup) {
 // Run implements the Yobit wrapper
 func (y *Yobit) Run() {
 	if y.Verbose {
-		log.Debugf("%s Websocket: %s.", y.GetName(), common.IsEnabled(y.Websocket.IsEnabled()))
 		log.Debugf("%s polling delay: %ds.\n", y.GetName(), y.RESTPollingDelay)
 		log.Debugf("%s %d currencies enabled: %s.\n", y.GetName(), len(y.EnabledPairs), y.EnabledPairs)
 	}
@@ -67,8 +66,8 @@ func (y *Yobit) UpdateTicker(p currency.Pair, assetType string) (ticker.Price, e
 	return ticker.GetTicker(y.Name, p, assetType)
 }
 
-// GetTickerPrice returns the ticker for a currency pair
-func (y *Yobit) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price, error) {
+// FetchTicker returns the ticker for a currency pair
+func (y *Yobit) FetchTicker(p currency.Pair, assetType string) (ticker.Price, error) {
 	tick, err := ticker.GetTicker(y.GetName(), p, assetType)
 	if err != nil {
 		return y.UpdateTicker(p, assetType)
@@ -76,8 +75,8 @@ func (y *Yobit) GetTickerPrice(p currency.Pair, assetType string) (ticker.Price,
 	return tick, nil
 }
 
-// GetOrderbookEx returns the orderbook for a currency pair
-func (y *Yobit) GetOrderbookEx(p currency.Pair, assetType string) (orderbook.Base, error) {
+// FetchOrderbook returns the orderbook for a currency pair
+func (y *Yobit) FetchOrderbook(p currency.Pair, assetType string) (orderbook.Base, error) {
 	ob, err := orderbook.Get(y.GetName(), p, assetType)
 	if err != nil {
 		return y.UpdateOrderbook(p, assetType)
