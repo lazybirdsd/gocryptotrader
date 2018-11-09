@@ -47,11 +47,12 @@ func StartWebsocketServer() {
 	}
 }
 
-// NewRouter takes in the exchange interfaces and returns a new multiplexor
+// newRouter takes in the exchange interfaces and returns a new multiplexor
 // router
 func newRouter(isREST bool) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 	var routes []Route
+	listenAddr := Bot.Config.RESTServer.ListenAddress
 
 	if isREST {
 		routes = []Route{
@@ -73,6 +74,7 @@ func newRouter(isREST bool) *mux.Router {
 			router.PathPrefix("/debug").Handler(http.DefaultServeMux)
 		}
 	} else {
+		listenAddr = Bot.Config.WebsocketServer.ListenAddress
 		routes = []Route{
 			Route{"ws", "GET", "/ws", WebsocketClientHandler},
 		}
@@ -87,7 +89,8 @@ func newRouter(isREST bool) *mux.Router {
 			Methods(route.Method).
 			Path(route.Pattern).
 			Name(route.Name).
-			Handler(handler)
+			Handler(handler).
+			Host(common.ExtractHost(listenAddr))
 	}
 	return router
 }
