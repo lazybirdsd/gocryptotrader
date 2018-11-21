@@ -12,6 +12,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 	log "github.com/thrasher-/gocryptotrader/logger"
 )
@@ -83,9 +84,9 @@ func (p *Poloniex) WsSubscribe() error {
 		return err
 	}
 
-	pairs := p.GetEnabledCurrencies()
+	pairs := p.GetEnabledPairs(assets.AssetTypeSpot)
 	for _, nextPair := range pairs {
-		fPair := exchange.FormatExchangeCurrency(p.GetName(), nextPair)
+		fPair := p.FormatExchangeCurrency(nextPair, assets.AssetTypeSpot)
 
 		orderbookJSON, err := common.JSONEncode(WsCommand{
 			Command: "subscribe",

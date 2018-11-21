@@ -11,4 +11,5 @@ RUN apk update && apk add --no-cache ca-certificates
 COPY --from=build /go/bin/gocryptotrader /app/
 COPY --from=build /go/src/github.com/thrasher-/gocryptotrader/config.json /app/
 EXPOSE 9050
+EXPOSE 9051
 CMD ["/app/gocryptotrader"]

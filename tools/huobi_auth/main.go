@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -129,19 +130,21 @@ func main() {
 	fmt.Println(string(pubKey))
 
 	type JSONGeneration struct {
-		APIAuthPEMKey string
+		PEMKey        string
+		PEMKeySupport bool
 	}
 
 	r := JSONGeneration{
-		APIAuthPEMKey: string(privKey),
+		PEMKey:        string(privKey),
+		PEMKeySupport: true,
 	}
 
-	resultk, err := common.JSONEncode(r)
+	resultk, err := json.MarshalIndent(r, "", " ")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Please visit https://github.com/huobiapi/API_Docs_en/wiki/Signing_API_Requests and follow from step 2 onwards.")
-	log.Printf("After completing the above instructions, please copy and paste the below key (including the following ',') into your Huobi exchange config file:\n\n")
+	log.Printf("After completing the above instructions, please copy and paste the below key in the API section (including the following ',') into your Huobi exchange config file:\n\n")
 	fmt.Println(string(resultk[1:len(resultk)-1]) + ",")
 }

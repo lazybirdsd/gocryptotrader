@@ -5,6 +5,7 @@ import (
 
 	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-/gocryptotrader/exchanges/ticker"
 )
@@ -12,23 +13,25 @@ import (
 // IBotExchange enforces standard functions for all exchanges supported in
 // GoCryptoTrader
 type IBotExchange interface {
-	Setup(exch config.ExchangeConfig)
+	Setup(exch *config.ExchangeConfig) error
 	Start(wg *sync.WaitGroup)
 	SetDefaults()
 	GetName() string
 	IsEnabled() bool
 	SetEnabled(bool)
-	FetchTicker(currency currency.Pair, assetType string) (ticker.Price, error)
-	UpdateTicker(currency currency.Pair, assetType string) (ticker.Price, error)
-	FetchOrderbook(currency currency.Pair, assetType string) (orderbook.Base, error)
-	UpdateOrderbook(currency currency.Pair, assetType string) (orderbook.Base, error)
-	GetEnabledCurrencies() currency.Pairs
-	GetAvailableCurrencies() currency.Pairs
+	FetchTicker(currency currency.Pair, assetType assets.AssetType) (ticker.Price, error)
+	UpdateTicker(currency currency.Pair, assetType assets.AssetType) (ticker.Price, error)
+	FetchOrderbook(currency currency.Pair, assetType assets.AssetType) (orderbook.Base, error)
+	UpdateOrderbook(currency currency.Pair, assetType assets.AssetType) (orderbook.Base, error)
+	FetchTradablePairs(assetType assets.AssetType) ([]string, error)
+	UpdateTradablePairs(forceUpdate bool) error
+	GetEnabledPairs(assetType assets.AssetType) currency.Pairs
+	GetAvailablePairs(assetType assets.AssetType) currency.Pairs
 	GetAccountInfo() (AccountInfo, error)
 	GetAuthenticatedAPISupport() bool
-	SetCurrencies(pairs currency.Pairs, enabledPairs bool) error
-	GetAssetTypes() []string
-	GetExchangeHistory(currency.Pair, string) ([]TradeHistory, error)
+	SetPairs(pairs currency.Pairs, assetType assets.AssetType, enabled bool) error
+	GetAssetTypes() assets.AssetTypes
+	GetExchangeHistory(currencyPair currency.Pair, assetType assets.AssetType) ([]TradeHistory, error)
 	SupportsAutoPairUpdates() bool
 	SupportsRESTTickerBatchUpdates() bool
 	GetFeeByType(feeBuilder *FeeBuilder) (float64, error)
@@ -55,4 +58,5 @@ type IBotExchange interface {
 	SupportsREST() bool
 	IsWebsocketEnabled() bool
 	GetWebsocket() (*Websocket, error)
+	GetDefaultConfig() (*config.ExchangeConfig, error)
 }

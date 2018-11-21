@@ -1,10 +1,14 @@
 package exchange
 
 import (
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/nonce"
 	"github.com/thrasher-/gocryptotrader/exchanges/request"
 )
@@ -15,7 +19,7 @@ type FeeType string
 // InternationalBankTransactionType custom type for calculating fees based on fiat transaction types
 type InternationalBankTransactionType string
 
-// Const declarations for fee types
+// Const vars for the exchange package
 const (
 	BankFee                        FeeType = "bankFee"
 	InternationalBankDepositFee    FeeType = "internationalBankDepositFee"
@@ -23,10 +27,7 @@ const (
 	CryptocurrencyTradeFee         FeeType = "cryptocurrencyTradeFee"
 	CyptocurrencyDepositFee        FeeType = "cyptocurrencyDepositFee"
 	CryptocurrencyWithdrawalFee    FeeType = "cryptocurrencyWithdrawalFee"
-)
 
-// Const declarations for international transaction types
-const (
 	WireTransfer    InternationalBankTransactionType = "wireTransfer"
 	PerfectMoney    InternationalBankTransactionType = "perfectMoney"
 	Neteller        InternationalBankTransactionType = "neteller"
@@ -115,6 +116,62 @@ const (
 	UnknownWithdrawalTypeText string = "UNKNOWN"
 )
 
+// ModifyOrder is a an order modifyer
+// ModifyOrder is a an order modifyer
+type ModifyOrder struct {
+	OrderID string
+	OrderType
+	OrderSide
+	Price           float64
+	Amount          float64
+	LimitPriceUpper float64
+	LimitPriceLower float64
+	CurrencyPair    currency.Pair
+
+	ImmediateOrCancel bool
+	HiddenOrder       bool
+	FillOrKill        bool
+	PostOnly          bool
+}
+
+// ModifyOrderResponse is an order modifying return type
+type ModifyOrderResponse struct {
+	OrderID string
+}
+
+// CancelAllOrdersResponse returns the status from attempting to cancel all orders on an exchagne
+type CancelAllOrdersResponse struct {
+	OrderStatus map[string]string
+}
+
+// OrderType enforces a standard for Ordertypes across the code base
+type OrderType string
+
+// OrderType ...types
+const (
+	Limit  OrderType = "Limit"
+	Market OrderType = "Market"
+)
+
+// ToString changes the ordertype to the exchange standard and returns a string
+func (o OrderType) ToString() string {
+	return fmt.Sprintf("%v", o)
+}
+
+// OrderSide enforces a standard for OrderSides across the code base
+type OrderSide string
+
+// OrderSide types
+const (
+	Buy  OrderSide = "Buy"
+	Sell OrderSide = "Sell"
+)
+
+// ToString changes the ordertype to the exchange standard and returns a string
+func (o OrderSide) ToString() string {
+	return fmt.Sprintf("%v", o)
+}
+
 // AccountInfo is a Generic type to hold each exchange's holdings in
 // all enabled currencies
 type AccountInfo struct {
@@ -171,6 +228,7 @@ type OrderCancellation struct {
 	AccountID     string
 	OrderID       string
 	CurrencyPair  currency.Pair
+	AssetType     assets.AssetType
 	WalletAddress string
 	Side          OrderSide
 }
@@ -233,36 +291,388 @@ type WithdrawRequest struct {
 	WireCurrency                  string
 }
 
+// Features stores the supported and enabled features
+// for the exchange
+type Features struct {
+	Supports FeaturesSupported
+	Enabled  FeaturesEnabled
+}
+
+// FeaturesEnabled stores the exchange enabled features
+type FeaturesEnabled struct {
+	AutoPairUpdates bool
+}
+
+// ProtocolFeatures holds all variables for the exchanges supported features
+// for a protocol (e.g REST or Websocket)
+type ProtocolFeatures struct {
+	TickerBatching      bool
+	TickerFetching      bool
+	OrderbookFetching   bool
+	AutoPairUpdates     bool
+	AccountInfo         bool
+	CryptoDeposit       bool
+	CryptoWithdrawal    uint32
+	FiatWithdraw        bool
+	GetOrder            bool
+	GetOrders           bool
+	CancelOrders        bool
+	CancelOrder         bool
+	SubmitOrder         bool
+	SubmitOrders        bool
+	ModifyOrder         bool
+	DepositHistory      bool
+	WithdrawalHistory   bool
+	TradeHistory        bool
+	UserTradeHistory    bool
+	TradeFee            bool
+	FiatDepositFee      bool
+	FiatWithdrawalFee   bool
+	CryptoDepositFee    bool
+	CryptoWithdrawalFee bool
+}
+
+// TradingSupported stores the exchanges supported
+// trading assets
+type TradingSupported struct {
+	Spot           bool
+	Futures        bool
+	Margin         bool
+	PerpetualSwaps bool
+	Index          bool
+}
+
+// FeaturesSupported stores the exchanges supported features
+type FeaturesSupported struct {
+	REST                  bool
+	RESTCapabilities      ProtocolFeatures
+	Websocket             bool
+	WebsocketCapabilities ProtocolFeatures
+	Trading               TradingSupported
+}
+
+// API stores the exchange API settings
+type API struct {
+	AuthenticatedSupport bool
+	PEMKeySupport        bool
+
+	Endpoints struct {
+		URL                 string
+		URLDefault          string
+		URLSecondary        string
+		URLSecondaryDefault string
+		WebsocketURL        string
+	}
+
+	Credentials struct {
+		Key      string
+		Secret   string
+		ClientID string
+		PEMKey   string
+	}
+
+	CredentialsValidator struct {
+		// For Huobi (optional)
+		RequiresPEM bool
+
+		RequiresKey                bool
+		RequiresSecret             bool
+		RequiresClientID           bool
+		RequiresBase64DecodeSecret bool
+	}
+}
+
+// CurrencyPair stores a list of enable/available
+// currency pairs and their storage/request format
+type CurrencyPair struct {
+	Enabled       currency.Pairs
+	Available     currency.Pairs
+	RequestFormat config.CurrencyPairFormatConfig
+	ConfigFormat  config.CurrencyPairFormatConfig
+}
+
+// CurrencyPairs stores a list of tradable currency pair settings
+type CurrencyPairs struct {
+	RequestFormat       config.CurrencyPairFormatConfig
+	ConfigFormat        config.CurrencyPairFormatConfig
+	UseGlobalPairFormat bool
+	LastUpdated         int64
+	AssetTypes          assets.AssetTypes
+	Spot                CurrencyPair
+	Futures             CurrencyPair
+}
+
+// Format holds exchange formatting
+type Format struct {
+	ExchangeName string
+	OrderType    map[string]string
+	OrderSide    map[string]string
+}
+
+// CancelAllOrdersResponse returns the status from attempting to cancel all orders on an exchagne
+
+// Formatting contain a range of exchanges formatting
+type Formatting []Format
+
+// OrderType ...types
+const (
+	AnyOrderType               OrderType = "ANY"
+	LimitOrderType             OrderType = "LIMIT"
+	MarketOrderType            OrderType = "MARKET"
+	ImmediateOrCancelOrderType OrderType = "IMMEDIATE_OR_CANCEL"
+	StopOrderType              OrderType = "STOP"
+	TrailingStopOrderType      OrderType = "TRAILINGSTOP"
+	UnknownOrderType           OrderType = "UNKNOWN"
+)
+
+// OrderSide types
+const (
+	AnyOrderSide  OrderSide = "ANY"
+	BuyOrderSide  OrderSide = "BUY"
+	SellOrderSide OrderSide = "SELL"
+	BidOrderSide  OrderSide = "BID"
+	AskOrderSide  OrderSide = "ASK"
+)
+
+// GetOrdersRequest used for GetOrderHistory and GetOpenOrders wrapper functions
+type GetOrdersRequest struct {
+	OrderType  OrderType
+	OrderSide  OrderSide
+	StartTicks time.Time
+	EndTicks   time.Time
+	// Currencies Empty array = all currencies. Some endpoints only support singular currency enquiries
+	Currencies []currency.Pair
+}
+
+// OrderStatus defines order status types
+type OrderStatus string
+
+// All OrderStatus types
+const (
+	AnyOrderStatus             OrderStatus = "ANY"
+	NewOrderStatus             OrderStatus = "NEW"
+	ActiveOrderStatus          OrderStatus = "ACTIVE"
+	PartiallyFilledOrderStatus OrderStatus = "PARTIALLY_FILLED"
+	FilledOrderStatus          OrderStatus = "FILLED"
+	CancelledOrderStatus       OrderStatus = "CANCELED"
+	PendingCancelOrderStatus   OrderStatus = "PENDING_CANCEL"
+	RejectedOrderStatus        OrderStatus = "REJECTED"
+	ExpiredOrderStatus         OrderStatus = "EXPIRED"
+	HiddenOrderStatus          OrderStatus = "HIDDEN"
+	UnknownOrderStatus         OrderStatus = "UNKNOWN"
+)
+
+// FilterOrdersBySide removes any OrderDetails that don't match the orderStatus provided
+func FilterOrdersBySide(orders *[]OrderDetail, orderSide OrderSide) {
+	if orderSide == "" || orderSide == AnyOrderSide {
+		return
+	}
+
+	var filteredOrders []OrderDetail
+	for _, orderDetail := range *orders {
+		if strings.EqualFold(string(orderDetail.OrderSide), string(orderSide)) {
+			filteredOrders = append(filteredOrders, orderDetail)
+		}
+	}
+
+	*orders = filteredOrders
+}
+
+// FilterOrdersByType removes any OrderDetails that don't match the orderType provided
+func FilterOrdersByType(orders *[]OrderDetail, orderType OrderType) {
+	if orderType == "" || orderType == AnyOrderType {
+		return
+	}
+
+	var filteredOrders []OrderDetail
+	for _, orderDetail := range *orders {
+		if strings.EqualFold(string(orderDetail.OrderType), string(orderType)) {
+			filteredOrders = append(filteredOrders, orderDetail)
+		}
+	}
+
+	*orders = filteredOrders
+}
+
+// FilterOrdersByTickRange removes any OrderDetails outside of the tick range
+func FilterOrdersByTickRange(orders *[]OrderDetail, startTicks, endTicks time.Time) {
+	if startTicks.IsZero() || endTicks.IsZero() ||
+		startTicks.Unix() == 0 || endTicks.Unix() == 0 || endTicks.Before(startTicks) {
+		return
+	}
+
+	var filteredOrders []OrderDetail
+	for _, orderDetail := range *orders {
+		if orderDetail.OrderDate.Unix() >= startTicks.Unix() && orderDetail.OrderDate.Unix() <= endTicks.Unix() {
+			filteredOrders = append(filteredOrders, orderDetail)
+		}
+	}
+
+	*orders = filteredOrders
+}
+
+// FilterOrdersByCurrencies removes any OrderDetails that do not match the provided currency list
+// It is forgiving in that the provided currencies can match quote or base currencies
+func FilterOrdersByCurrencies(orders *[]OrderDetail, currencies []currency.Pair) {
+	if len(currencies) <= 0 {
+		return
+	}
+
+	var filteredOrders []OrderDetail
+	for _, orderDetail := range *orders {
+		matchFound := false
+		for _, currency := range currencies {
+			if !matchFound && orderDetail.CurrencyPair.Equal(currency) {
+				matchFound = true
+			}
+		}
+
+		if matchFound {
+			filteredOrders = append(filteredOrders, orderDetail)
+		}
+	}
+
+	*orders = filteredOrders
+}
+
+// ByPrice used for sorting orders by price
+type ByPrice []OrderDetail
+
+func (b ByPrice) Len() int {
+	return len(b)
+}
+
+func (b ByPrice) Less(i, j int) bool {
+	return b[i].Price < b[j].Price
+}
+
+func (b ByPrice) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+// SortOrdersByPrice the caller function to sort orders
+func SortOrdersByPrice(orders *[]OrderDetail, reverse bool) {
+	if reverse {
+		sort.Sort(sort.Reverse(ByPrice(*orders)))
+	} else {
+		sort.Sort(ByPrice(*orders))
+	}
+}
+
+// ByOrderType used for sorting orders by order type
+type ByOrderType []OrderDetail
+
+func (b ByOrderType) Len() int {
+	return len(b)
+}
+
+func (b ByOrderType) Less(i, j int) bool {
+	return b[i].OrderType.ToString() < b[j].OrderType.ToString()
+}
+
+func (b ByOrderType) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+// SortOrdersByType the caller function to sort orders
+func SortOrdersByType(orders *[]OrderDetail, reverse bool) {
+	if reverse {
+		sort.Sort(sort.Reverse(ByOrderType(*orders)))
+	} else {
+		sort.Sort(ByOrderType(*orders))
+	}
+}
+
+// ByCurrency used for sorting orders by order currency
+type ByCurrency []OrderDetail
+
+func (b ByCurrency) Len() int {
+	return len(b)
+}
+
+func (b ByCurrency) Less(i, j int) bool {
+	return b[i].CurrencyPair.String() < b[j].CurrencyPair.String()
+}
+
+func (b ByCurrency) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+// SortOrdersByCurrency the caller function to sort orders
+func SortOrdersByCurrency(orders *[]OrderDetail, reverse bool) {
+	if reverse {
+		sort.Sort(sort.Reverse(ByCurrency(*orders)))
+	} else {
+		sort.Sort(ByCurrency(*orders))
+	}
+}
+
+// ByDate used for sorting orders by order date
+type ByDate []OrderDetail
+
+func (b ByDate) Len() int {
+	return len(b)
+}
+
+func (b ByDate) Less(i, j int) bool {
+	return b[i].OrderDate.Unix() < b[j].OrderDate.Unix()
+}
+
+func (b ByDate) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+// SortOrdersByDate the caller function to sort orders
+func SortOrdersByDate(orders *[]OrderDetail, reverse bool) {
+	if reverse {
+		sort.Sort(sort.Reverse(ByDate(*orders)))
+	} else {
+		sort.Sort(ByDate(*orders))
+	}
+}
+
+// ByOrderSide used for sorting orders by order side (buy sell)
+type ByOrderSide []OrderDetail
+
+func (b ByOrderSide) Len() int {
+	return len(b)
+}
+
+func (b ByOrderSide) Less(i, j int) bool {
+	return b[i].OrderSide.ToString() < b[j].OrderSide.ToString()
+}
+
+func (b ByOrderSide) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+// SortOrdersBySide the caller function to sort orders
+func SortOrdersBySide(orders *[]OrderDetail, reverse bool) {
+	if reverse {
+		sort.Sort(sort.Reverse(ByOrderSide(*orders)))
+	} else {
+		sort.Sort(ByOrderSide(*orders))
+	}
+}
+
 // Base stores the individual exchange information
 type Base struct {
-	Name                                       string
-	Enabled                                    bool
-	Verbose                                    bool
-	RESTPollingDelay                           time.Duration
-	AuthenticatedAPISupport                    bool
-	APIWithdrawPermissions                     uint32
-	APIAuthPEMKeySupport                       bool
-	APISecret, APIKey, APIAuthPEMKey, ClientID string
-	Nonce                                      nonce.Nonce
-	TakerFee, MakerFee, Fee                    float64
-	BaseCurrencies                             currency.Currencies
-	AvailablePairs                             currency.Pairs
-	EnabledPairs                               currency.Pairs
-	AssetTypes                                 []string
-	PairsLastUpdated                           int64
-	SupportsAutoPairUpdating                   bool
-	SupportsRESTTickerBatching                 bool
-	SupportsWebsocketAPI                       bool
-	SupportsRESTAPI                            bool
-	HTTPTimeout                                time.Duration
-	HTTPUserAgent                              string
-	WebsocketURL                               string
-	APIUrl                                     string
-	APIUrlDefault                              string
-	APIUrlSecondary                            string
-	APIUrlSecondaryDefault                     string
-	RequestCurrencyPairFormat                  config.CurrencyPairFormatConfig
-	ConfigCurrencyPairFormat                   config.CurrencyPairFormatConfig
-	Websocket                                  *Websocket
+	Name    string
+	Enabled bool
+	Verbose bool
+
+	APIWithdrawPermissions uint32
+	API                    API
+	Nonce                  nonce.Nonce
+	BaseCurrencies         currency.Currencies
+	CurrencyPairs          CurrencyPairs
+
+	Features      Features
+	HTTPTimeout   time.Duration
+	HTTPUserAgent string
+	Websocket     *Websocket
 	*request.Requester
+
+	LoadedByConfig bool
+	Config         *config.ExchangeConfig
 }

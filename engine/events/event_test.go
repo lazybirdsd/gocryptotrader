@@ -194,7 +194,7 @@ package events
 // 	var tickerNew ticker.Price
 // 	tickerNew.Last = 0
 // 	newPair = currency.NewPairFromStrings("BTC", "USD")
-// 	ticker.ProcessTicker("ANX", newPair, tickerNew, ticker.Spot)
+// 	ticker.ProcessTicker("ANX", newPair, tickerNew, exchange.AssetTypeSpot)
 // 	Events[one].Pair = newPair
 // 	conditionBool = Events[one].CheckCondition()
 // 	if conditionBool {
@@ -203,7 +203,7 @@ package events
 //
 // 	// Test last pricce > 0 and conditional logic
 // 	tickerNew.Last = 11
-// 	ticker.ProcessTicker("ANX", newPair, tickerNew, ticker.Spot)
+// 	ticker.ProcessTicker("ANX", newPair, tickerNew, exchange.AssetTypeSpot)
 // 	Events[one].Condition = ">,10"
 // 	conditionBool = Events[one].CheckCondition()
 // 	if !conditionBool {

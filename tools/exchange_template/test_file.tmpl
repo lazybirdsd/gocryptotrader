@@ -27,9 +27,9 @@ func TestSetup(t *testing.T) {
 		t.Error("Test Failed - {{.CapitalName}} Setup() init error")
 	}
 
-	{{.Name}}Config.AuthenticatedAPISupport = true
-	{{.Name}}Config.APIKey = testAPIKey
-	{{.Name}}Config.APISecret = testAPISecret
+	{{.Name}}Config.API.AuthenticatedSupport = true
+	{{.Name}}Config.API.Credentials.Key = testAPIKey
+	{{.Name}}Config.API.Credentials.Secret = testAPISecret
 
 	{{.Variable}}.Setup({{.Name}}Config)
 }

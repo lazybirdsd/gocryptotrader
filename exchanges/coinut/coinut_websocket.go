@@ -11,6 +11,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 )
 
@@ -272,7 +273,7 @@ func (c *COINUT) WsSetInstrumentList() error {
 
 // WsSubscribe subscribes to websocket streams
 func (c *COINUT) WsSubscribe() error {
-	pairs := c.GetEnabledCurrencies()
+	pairs := c.GetEnabledPairs(assets.AssetTypeSpot)
 
 	for _, p := range pairs {
 		ticker := wsRequest{

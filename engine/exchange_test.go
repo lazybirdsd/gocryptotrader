@@ -133,9 +133,3 @@ func TestUnloadExchange(t *testing.T) {
 
 	CleanupTest(t)
 }
-
-func TestSetupExchanges(t *testing.T) {
-	SetupTest(t)
-	SetupExchanges()
-	CleanupTest(t)
-}

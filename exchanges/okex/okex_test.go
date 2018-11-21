@@ -50,8 +50,8 @@ func TestSetup(t *testing.T) {
 	if testSetupRan {
 		return
 	}
-	if o.APIKey == apiKey && o.APISecret == apiSecret &&
-		o.ClientID == passphrase && apiKey != "" && apiSecret != "" && passphrase != "" {
+	if o.API.Credentials.Key == apiKey && o.API.Credentials.Secret == apiSecret &&
+		o.API.Credentials.ClientID == passphrase && apiKey != "" && apiSecret != "" && passphrase != "" {
 		return
 	}
 	o.ExchangeName = OKGroupExchange
@@ -63,21 +63,17 @@ func TestSetup(t *testing.T) {
 		t.Fatalf("Test Failed - %v Setup() init error", OKGroupExchange)
 	}
 
-	okexConfig.AuthenticatedAPISupport = true
-	okexConfig.APIKey = apiKey
-	okexConfig.APISecret = apiSecret
-	okexConfig.ClientID = passphrase
-	okexConfig.WebsocketURL = o.WebsocketURL
+	okexConfig.API.AuthenticatedSupport = true
+	okexConfig.API.Credentials.Key = apiKey
+	okexConfig.API.Credentials.Secret = apiSecret
+	okexConfig.API.Credentials.ClientID = passphrase
+	okexConfig.API.Endpoints.WebsocketURL = o.API.Endpoints.WebsocketURL
 	o.Setup(okexConfig)
 	testSetupRan = true
 }
 
 func areTestAPIKeysSet() bool {
-	if o.APIKey != "" && o.APIKey != "Key" &&
-		o.APISecret != "" && o.APISecret != "Secret" {
-		return true
-	}
-	return false
+	return o.ValidateAPICredentials()
 }
 
 func testStandardErrorHandling(t *testing.T, err error) {
@@ -95,8 +91,8 @@ func setupWSConnection() error {
 		err := o.WebsocketSetup(o.WsConnect,
 			o.Name,
 			true,
-			o.WebsocketURL,
-			o.WebsocketURL)
+			o.API.Endpoints.WebsocketURL,
+			o.API.Endpoints.WebsocketURL)
 		o.Websocket.DataHandler = make(chan interface{}, 500)
 		if err != nil {
 			return err
@@ -1059,9 +1055,7 @@ func TestGetAllFuturesTokenInfo(t *testing.T) {
 	TestSetDefaults(t)
 	t.Parallel()
 	_, err := o.GetAllFuturesTokenInfo()
-	if err != nil {
-		t.Error(err)
-	}
+	testStandardErrorHandling(t, err)
 }
 
 // TestGetAllFuturesTokenInfo API endpoint test
@@ -1079,9 +1073,7 @@ func TestGetFuturesFilledOrder(t *testing.T) {
 	_, err := o.GetFuturesFilledOrder(okgroup.GetFuturesFilledOrderRequest{
 		InstrumentID: getFutureInstrumentID(),
 	})
-	if err != nil {
-		t.Error(err)
-	}
+	testStandardErrorHandling(t, err)
 }
 
 // TestGetFuturesHoldAmount API endpoint test

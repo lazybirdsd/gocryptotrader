@@ -13,6 +13,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 )
 
@@ -48,7 +49,7 @@ func (g *Gemini) WsConnect() error {
 
 // WsSubscribe subscribes to the full websocket suite on gemini exchange
 func (g *Gemini) WsSubscribe(dialer *websocket.Dialer) error {
-	enabledCurrencies := g.GetEnabledCurrencies()
+	enabledCurrencies := g.GetEnabledPairs(assets.AssetTypeSpot)
 	for i, c := range enabledCurrencies {
 		val := url.Values{}
 		val.Set("heartbeat", "true")

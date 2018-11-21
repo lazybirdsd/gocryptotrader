@@ -1,11 +1,12 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-/gocryptotrader/exchanges/stats"
 	"github.com/thrasher-/gocryptotrader/exchanges/ticker"
@@ -15,7 +16,7 @@ import (
 
 // GetAllAvailablePairs returns a list of all available pairs on either enabled
 // or disabled exchanges
-func GetAllAvailablePairs(enabledExchangesOnly bool) currency.Pairs {
+func GetAllAvailablePairs(enabledExchangesOnly bool, assetType assets.AssetType) currency.Pairs {
 	var pairList currency.Pairs
 	for x := range Bot.Config.Exchanges {
 		if enabledExchangesOnly && !Bot.Config.Exchanges[x].Enabled {
@@ -23,7 +24,7 @@ func GetAllAvailablePairs(enabledExchangesOnly bool) currency.Pairs {
 		}
 
 		exchName := Bot.Config.Exchanges[x].Name
-		pairs, err := Bot.Config.GetAvailablePairs(exchName)
+		pairs, err := Bot.Config.GetAvailablePairs(exchName, assetType)
 		if err != nil {
 			continue
 		}
@@ -40,9 +41,9 @@ func GetAllAvailablePairs(enabledExchangesOnly bool) currency.Pairs {
 
 // GetSpecificAvailablePairs returns a list of supported pairs based on specific
 // parameters
-func GetSpecificAvailablePairs(enabledExchangesOnly, fiatPairs, includeUSDT, cryptoPairs bool) currency.Pairs {
+func GetSpecificAvailablePairs(enabledExchangesOnly, fiatPairs, includeUSDT, cryptoPairs bool, assetType assets.AssetType) currency.Pairs {
 	var pairList currency.Pairs
-	supportedPairs := GetAllAvailablePairs(enabledExchangesOnly)
+	supportedPairs := GetAllAvailablePairs(enabledExchangesOnly, assetType)
 
 	for x := range supportedPairs {
 		if fiatPairs {
@@ -87,7 +88,7 @@ func IsRelatablePairs(p1, p2 currency.Pair, includeUSDT bool) bool {
 
 // MapCurrenciesByExchange returns a list of currency pairs mapped to an
 // exchange
-func MapCurrenciesByExchange(p []currency.Pair, enabledExchangesOnly bool) map[string]currency.Pairs {
+func MapCurrenciesByExchange(p currency.Pairs, enabledExchangesOnly bool, assetType assets.AssetType) map[string]currency.Pairs {
 	currencyExchange := make(map[string]currency.Pairs)
 	for x := range p {
 		for y := range Bot.Config.Exchanges {
@@ -95,7 +96,7 @@ func MapCurrenciesByExchange(p []currency.Pair, enabledExchangesOnly bool) map[s
 				continue
 			}
 			exchName := Bot.Config.Exchanges[y].Name
-			success, err := Bot.Config.SupportsPair(exchName, p[x])
+			success, err := Bot.Config.SupportsPair(exchName, p[x], assetType)
 			if err != nil || !success {
 				continue
 			}
@@ -119,7 +120,7 @@ func MapCurrenciesByExchange(p []currency.Pair, enabledExchangesOnly bool) map[s
 
 // GetExchangeNamesByCurrency returns a list of exchanges supporting
 // a currency pair based on whether the exchange is enabled or not
-func GetExchangeNamesByCurrency(p currency.Pair, enabled bool) []string {
+func GetExchangeNamesByCurrency(p currency.Pair, enabled bool, assetType assets.AssetType) []string {
 	var exchanges []string
 	for x := range Bot.Config.Exchanges {
 		if enabled != Bot.Config.Exchanges[x].Enabled {
@@ -127,7 +128,7 @@ func GetExchangeNamesByCurrency(p currency.Pair, enabled bool) []string {
 		}
 
 		exchName := Bot.Config.Exchanges[x].Name
-		success, err := Bot.Config.SupportsPair(exchName, p)
+		success, err := Bot.Config.SupportsPair(exchName, p, assetType)
 		if err != nil {
 			continue
 		}
@@ -236,7 +237,7 @@ func GetRelatableCurrencies(p currency.Pair, incOrig, incUSDT bool) currency.Pai
 
 // GetSpecificOrderbook returns a specific orderbook given the currency,
 // exchangeName and assetType
-func GetSpecificOrderbook(currencyPair, exchangeName, assetType string) (orderbook.Base, error) {
+func GetSpecificOrderbook(currencyPair, exchangeName string, assetType assets.AssetType) (orderbook.Base, error) {
 	var specificOrderbook orderbook.Base
 	var err error
 	for x := range Bot.Exchanges {
@@ -255,7 +256,7 @@ func GetSpecificOrderbook(currencyPair, exchangeName, assetType string) (orderbo
 
 // GetSpecificTicker returns a specific ticker given the currency,
 // exchangeName and assetType
-func GetSpecificTicker(currencyPair, exchangeName, assetType string) (ticker.Price, error) {
+func GetSpecificTicker(currencyPair, exchangeName string, assetType assets.AssetType) (ticker.Price, error) {
 	var specificTicker ticker.Price
 	var err error
 	for x := range Bot.Exchanges {
@@ -306,12 +307,12 @@ func GetAccountCurrencyInfoByExchangeName(accounts []exchange.AccountInfo, excha
 			return accounts[i], nil
 		}
 	}
-	return exchange.AccountInfo{}, errors.New(exchange.ErrExchangeNotFound)
+	return exchange.AccountInfo{}, ErrExchangeNotFound
 }
 
 // GetExchangeHighestPriceByCurrencyPair returns the exchange with the highest
 // price for a given currency pair and asset type
-func GetExchangeHighestPriceByCurrencyPair(p currency.Pair, assetType string) (string, error) {
+func GetExchangeHighestPriceByCurrencyPair(p currency.Pair, assetType assets.AssetType) (string, error) {
 	result := stats.SortExchangesByPrice(p, assetType, true)
 	if len(result) == 0 {
 		return "", fmt.Errorf("no stats for supplied currency pair and asset type")
@@ -322,7 +323,7 @@ func GetExchangeHighestPriceByCurrencyPair(p currency.Pair, assetType string) (s
 
 // GetExchangeLowestPriceByCurrencyPair returns the exchange with the lowest
 // price for a given currency pair and asset type
-func GetExchangeLowestPriceByCurrencyPair(p currency.Pair, assetType string) (string, error) {
+func GetExchangeLowestPriceByCurrencyPair(p currency.Pair, assetType assets.AssetType) (string, error) {
 	result := stats.SortExchangesByPrice(p, assetType, false)
 	if len(result) == 0 {
 		return "", fmt.Errorf("no stats for supplied currency pair and asset type")
@@ -419,4 +420,170 @@ func SeedExchangeAccountInfo(data []exchange.AccountInfo) {
 			}
 		}
 	}
+}
+
+// GetCryptocurrenciesByExchange returns a list of cryptocurrencies the exchange supports
+func GetCryptocurrenciesByExchange(exchangeName string, enabledExchangesOnly, enabledPairs bool, assetType assets.AssetType) ([]string, error) {
+	var cryptocurrencies []string
+	for x := range Bot.Config.Exchanges {
+		if Bot.Config.Exchanges[x].Name == exchangeName {
+			if enabledExchangesOnly && !Bot.Config.Exchanges[x].Enabled {
+				continue
+			}
+
+			exchName := Bot.Config.Exchanges[x].Name
+			var pairs currency.Pairs
+			var err error
+
+			if enabledPairs {
+				pairs, err = Bot.Config.GetEnabledPairs(exchName, assetType)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				pairs, err = Bot.Config.GetAvailablePairs(exchName, assetType)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			for y := range pairs {
+				if pairs[y].Base.IsCryptocurrency() &&
+					!common.StringDataCompareUpper(cryptocurrencies, pairs[y].Base.String()) {
+					cryptocurrencies = append(cryptocurrencies, pairs[y].Base.String())
+				}
+
+				if pairs[y].Quote.IsCryptocurrency() &&
+					!common.StringDataCompareUpper(cryptocurrencies, pairs[y].Quote.String()) {
+					cryptocurrencies = append(cryptocurrencies, pairs[y].Quote.String())
+				}
+			}
+		}
+	}
+	return cryptocurrencies, nil
+}
+
+// GetExchangeCryptocurrencyDepositAddress returns the cryptocurrency deposit address for a particular
+// exchange
+func GetExchangeCryptocurrencyDepositAddress(exchName string, item currency.Code) (string, error) {
+	exch := GetExchangeByName(exchName)
+	if exch == nil {
+		return "", ErrExchangeNotFound
+	}
+
+	return exch.GetDepositAddress(item, "")
+}
+
+// GetExchangeCryptocurrencyDepositAddresses obtains an exchanges deposit cryptocurrency list
+func GetExchangeCryptocurrencyDepositAddresses() map[string]map[string]string {
+	result := make(map[string]map[string]string)
+
+	for x := range Bot.Exchanges {
+		if !Bot.Exchanges[x].IsEnabled() {
+			continue
+		}
+		exchName := Bot.Exchanges[x].GetName()
+
+		if !Bot.Exchanges[x].GetAuthenticatedAPISupport() {
+			if Bot.Settings.Verbose {
+				log.Printf("GetExchangeCryptocurrencyDepositAddresses: Skippping %s due to disabled authenticated API support.", exchName)
+			}
+			continue
+		}
+
+		cryptoCurrencies, err := GetCryptocurrenciesByExchange(exchName, true, true, assets.AssetTypeSpot)
+		if err != nil {
+			log.Printf("%s failed to get cryptocurrency deposit addresses. Err: %s", exchName, err)
+			continue
+		}
+
+		cryptoAddr := make(map[string]string)
+		for y := range cryptoCurrencies {
+			cryptocurrency := cryptoCurrencies[y]
+			depositAddr, err := Bot.Exchanges[x].GetDepositAddress(currency.NewCode(cryptocurrency), "")
+			if err != nil {
+				log.Printf("%s failed to get cryptocurrency deposit addresses. Err: %s", exchName, err)
+				continue
+			}
+			cryptoAddr[cryptocurrency] = depositAddr
+		}
+		result[exchName] = cryptoAddr
+	}
+
+	return result
+}
+
+// GetDepositAddressByExchange returns a deposit address for the specified exchange and cryptocurrency
+// if it exists
+func GetDepositAddressByExchange(exchName string, currencyItem currency.Code) string {
+	for x, y := range Bot.CryptocurrencyDepositAddresses {
+		if exchName == x {
+			addr, ok := y[currencyItem.String()]
+			if ok {
+				return addr
+			}
+		}
+	}
+	return ""
+}
+
+// GetOrderByExchange returns the order info for the desired exchange
+func GetOrderByExchange(exchName string, orderID string) (exchange.OrderDetail, error) {
+	exch := GetExchangeByName(exchName)
+	if exch == nil {
+		return exchange.OrderDetail{}, ErrExchangeNotFound
+	}
+
+	return exch.GetOrderInfo(orderID)
+}
+
+// GetDepositAddressesByExchange returns a list of cryptocurrency addresses for the specified
+// exchange if they exist
+func GetDepositAddressesByExchange(exchName string) map[string]string {
+	for x, y := range Bot.CryptocurrencyDepositAddresses {
+		if exchName == x {
+			return y
+		}
+	}
+	return nil
+}
+
+// CancelAllOrdersByExchange sends a cancel all orders request to the desired exchange
+func CancelAllOrdersByExchange(exchName string) error {
+	exch := GetExchangeByName(exchName)
+	if exch == nil {
+		return ErrExchangeNotFound
+	}
+
+	// to-do
+	return nil
+}
+
+// CancelOrderByExchange sends a cancel order request based on the desired exchange
+// and order ID
+func CancelOrderByExchange(exchName string, order *exchange.OrderCancellation) error {
+	exch := GetExchangeByName(exchName)
+	if exch == nil {
+		return ErrExchangeNotFound
+	}
+
+	return exch.CancelOrder(order)
+}
+
+// WithdrawCryptocurrencyFundsByExchange withdraws the desired cryptocurrency and amount to a desired cryptocurrency address
+func WithdrawCryptocurrencyFundsByExchange(exchName string, cryptocurrency currency.Code, address string, amount float64) (string, error) {
+	exch := GetExchangeByName(exchName)
+	if exch == nil {
+		return "", ErrExchangeNotFound
+	}
+
+	// TO-DO: FILL
+	return exch.WithdrawCryptocurrencyFunds(&exchange.WithdrawRequest{})
+}
+
+// FormatCurrency is a method that formats and returns a currency pair
+// based on the user currency display preferences
+func FormatCurrency(p currency.Pair) currency.Pair {
+	return p.Format(Bot.Config.Currency.CurrencyPairFormat.Delimiter,
+		Bot.Config.Currency.CurrencyPairFormat.Uppercase)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 )
 
 // Please supply your own keys here for due diligence testing
@@ -24,19 +25,10 @@ func TestSetDefaults(t *testing.T) {
 	if a.Name != "ANX" {
 		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
 	}
-	if a.Enabled {
+	if !a.Enabled {
 		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
 	}
-	if a.TakerFee != 0.02 {
-		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
-	}
-	if a.MakerFee != 0.01 {
-		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
-	}
-	if a.Verbose {
-		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
-	}
-	if a.RESTPollingDelay != 10 {
+	if !a.Verbose {
 		t.Error("Test Failed - ANX SetDefaults() incorrect values set")
 	}
 }
@@ -45,20 +37,16 @@ func TestSetup(t *testing.T) {
 	anxSetupConfig := config.GetConfig()
 	anxSetupConfig.LoadConfig("../../testdata/configtest.json")
 	anxConfig, err := anxSetupConfig.GetExchangeConfig("ANX")
-	anxConfig.AuthenticatedAPISupport = true
-
 	if err != nil {
 		t.Error("Test Failed - ANX Setup() init error")
 	}
+
 	a.Setup(anxConfig)
-	a.APIKey = testAPIKey
-	a.APISecret = testAPISecret
-	a.AuthenticatedAPISupport = true
+	a.API.Credentials.Key = testAPIKey
+	a.API.Credentials.Secret = testAPISecret
+	a.API.AuthenticatedSupport = true
 
 	if !a.Enabled {
-		t.Error("Test Failed - ANX Setup() incorrect values set")
-	}
-	if a.RESTPollingDelay != 10 {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
 	if a.Verbose {
@@ -67,10 +55,10 @@ func TestSetup(t *testing.T) {
 	if len(a.BaseCurrencies) == 0 {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
-	if len(a.AvailablePairs) == 0 {
+	if len(a.CurrencyPairs.Spot.Available) == 0 {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
-	if len(a.EnabledPairs) == 0 {
+	if len(a.CurrencyPairs.Spot.Enabled) == 0 {
 		t.Error("Test Failed - ANX Setup() incorrect values set")
 	}
 }
@@ -82,8 +70,8 @@ func TestGetCurrencies(t *testing.T) {
 	}
 }
 
-func TestGetTradablePairs(t *testing.T) {
-	_, err := a.GetTradablePairs()
+func TestFetchTradablePairs(t *testing.T) {
+	_, err := a.FetchTradablePairs(assets.AssetTypeSpot)
 	if err != nil {
 		t.Fatalf("Test failed. TestGetTradablePairs failed. Err: %s", err)
 	}
@@ -252,11 +240,7 @@ func TestGetOrderHistory(t *testing.T) {
 // ----------------------------------------------------------------------------------------------------------------------------
 
 func areTestAPIKeysSet() bool {
-	if a.APIKey != "" && a.APIKey != "Key" &&
-		a.APISecret != "" && a.APISecret != "Secret" {
-		return true
-	}
-	return false
+	return a.ValidateAPICredentials()
 }
 
 func TestSubmitOrder(t *testing.T) {

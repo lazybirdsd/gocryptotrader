@@ -1270,7 +1270,7 @@
    "websocket": false,
    "useSandbox": false,
    "restPollingDelay": 10,
-   "httpTimeout": 10,
+   "httpTimeout": 15000000000,
    "httpUserAgent": "",
    "authenticatedApiSupport": false,
    "apiKey": "Key",

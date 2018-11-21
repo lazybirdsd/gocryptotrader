@@ -14,6 +14,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 )
 
@@ -226,10 +227,10 @@ func (h *HUOBIHADAX) WsProcessOrderbook(ob *WsDepth, symbol string) error {
 // WsSubscribe susbcribes to the current websocket streams based on the enabled
 // pair
 func (h *HUOBIHADAX) WsSubscribe() error {
-	pairs := h.GetEnabledCurrencies()
+	pairs := h.GetEnabledPairs(assets.AssetTypeSpot)
 
 	for _, p := range pairs {
-		fPair := exchange.FormatExchangeCurrency(h.GetName(), p)
+		fPair := h.FormatExchangeCurrency(p, assets.AssetTypeSpot)
 
 		depthTopic := fmt.Sprintf(wsMarketDepth, fPair.String())
 		depthJSON, err := common.JSONEncode(WsRequest{Subscribe: depthTopic})

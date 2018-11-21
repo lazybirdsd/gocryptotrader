@@ -9,6 +9,7 @@ import (
 
 	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 )
 
@@ -365,7 +366,7 @@ type WebsocketOrderbookLocal struct {
 func (w *WebsocketOrderbookLocal) Update(bidTargets, askTargets []orderbook.Item,
 	p currency.Pair,
 	updated time.Time,
-	exchName, assetType string) error {
+	exchName string, assetType assets.AssetType) error {
 	if bidTargets == nil && askTargets == nil {
 		return errors.New("exchange.go websocket orderbook cache Update() error - cannot have bids and ask targets both nil")
 	}
@@ -492,7 +493,7 @@ func (w *WebsocketOrderbookLocal) LoadSnapshot(newOrderbook *orderbook.Base, exc
 // UpdateUsingID updates orderbooks using specified ID
 func (w *WebsocketOrderbookLocal) UpdateUsingID(bidTargets, askTargets []orderbook.Item,
 	p currency.Pair,
-	exchName, assetType, action string) error {
+	exchName string, assetType assets.AssetType, action string) error {
 	w.m.Lock()
 	defer w.m.Unlock()
 

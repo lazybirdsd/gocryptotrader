@@ -10,6 +10,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 	log "github.com/thrasher-/gocryptotrader/logger"
 	pusher "github.com/toorop/go-pusher"
@@ -59,7 +60,7 @@ func (b *Bitstamp) findPairFromChannel(channelName string) (string, error) {
 	split := strings.Split(channelName, "_")
 	tradingPair := strings.ToUpper(split[len(split)-1])
 
-	for _, enabledPair := range b.EnabledPairs {
+	for _, enabledPair := range b.CurrencyPairs.Spot.Enabled {
 		if enabledPair.String() == tradingPair {
 			return tradingPair, nil
 		}
@@ -101,7 +102,7 @@ func (b *Bitstamp) WsConnect() error {
 
 	go b.WsReadData()
 
-	for _, p := range b.GetEnabledCurrencies() {
+	for _, p := range b.GetEnabledPairs(assets.AssetTypeSpot) {
 		orderbookSeed, err := b.GetOrderbook(p.String())
 		if err != nil {
 			return err
@@ -224,7 +225,7 @@ func (b *Bitstamp) WsReadData() {
 }
 
 // WsUpdateOrderbook updates local cache of orderbook information
-func (b *Bitstamp) WsUpdateOrderbook(ob PusherOrderbook, p currency.Pair, assetType string) error {
+func (b *Bitstamp) WsUpdateOrderbook(ob PusherOrderbook, p currency.Pair, assetType assets.AssetType) error {
 	if len(ob.Asks) == 0 && len(ob.Bids) == 0 {
 		return errors.New("bitstamp_websocket.go error - no orderbook data")
 	}

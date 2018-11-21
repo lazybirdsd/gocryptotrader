@@ -61,19 +61,19 @@ func TestSetup(t *testing.T) {
 		t.Error("Test Failed - Gemini Setup() init error")
 	}
 
-	geminiConfig.AuthenticatedAPISupport = true
+	geminiConfig.API.AuthenticatedSupport = true
 
 	Session[1].Setup(geminiConfig)
 	Session[2].Setup(geminiConfig)
 
-	Session[1].APIKey = apiKey1
-	Session[1].APISecret = apiSecret1
+	Session[1].API.Credentials.Key = apiKey1
+	Session[1].API.Credentials.Secret = apiSecret1
 
-	Session[2].APIKey = apiKey2
-	Session[2].APISecret = apiSecret2
+	Session[2].API.Credentials.Key = apiKey2
+	Session[2].API.Credentials.Secret = apiSecret2
 
-	Session[1].APIUrl = geminiSandboxAPIURL
-	Session[2].APIUrl = geminiSandboxAPIURL
+	Session[1].API.Endpoints.URL = geminiSandboxAPIURL
+	Session[2].API.Endpoints.URL = geminiSandboxAPIURL
 }
 
 func TestGetSymbols(t *testing.T) {
@@ -379,11 +379,7 @@ func TestGetOrderHistory(t *testing.T) {
 // Any tests below this line have the ability to impact your orders on the exchange. Enable canManipulateRealOrders to run them
 // ----------------------------------------------------------------------------------------------------------------------------
 func areTestAPIKeysSet() bool {
-	if Session[1].APIKey != "" && Session[1].APIKey != "Key" &&
-		Session[1].APISecret != "" && Session[1].APISecret != "Secret" {
-		return true
-	}
-	return false
+	return Session[1].ValidateAPICredentials()
 }
 
 func TestSubmitOrder(t *testing.T) {

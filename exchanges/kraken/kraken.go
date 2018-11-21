@@ -10,11 +10,8 @@ import (
 	"time"
 
 	"github.com/thrasher-/gocryptotrader/common"
-	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
-	"github.com/thrasher-/gocryptotrader/exchanges/request"
-	"github.com/thrasher-/gocryptotrader/exchanges/ticker"
 	log "github.com/thrasher-/gocryptotrader/logger"
 )
 
@@ -56,80 +53,11 @@ const (
 // Kraken is the overarching type across the alphapoint package
 type Kraken struct {
 	exchange.Base
-	CryptoFee, FiatFee float64
-}
-
-// SetDefaults sets current default settings
-func (k *Kraken) SetDefaults() {
-	k.Name = "Kraken"
-	k.Enabled = false
-	k.FiatFee = 0.35
-	k.CryptoFee = 0.10
-	k.Verbose = false
-	k.RESTPollingDelay = 10
-	k.APIWithdrawPermissions = exchange.AutoWithdrawCryptoWithSetup |
-		exchange.WithdrawCryptoWith2FA |
-		exchange.AutoWithdrawFiatWithSetup |
-		exchange.WithdrawFiatWith2FA
-	k.RequestCurrencyPairFormat.Delimiter = ""
-	k.RequestCurrencyPairFormat.Uppercase = true
-	k.RequestCurrencyPairFormat.Separator = ","
-	k.ConfigCurrencyPairFormat.Delimiter = "-"
-	k.ConfigCurrencyPairFormat.Uppercase = true
-	k.AssetTypes = []string{ticker.Spot}
-	k.SupportsAutoPairUpdating = true
-	k.SupportsRESTTickerBatching = true
-	k.SupportsRESTAPI = true
-	k.SupportsWebsocketAPI = false
-	k.Requester = request.New(k.Name,
-		request.NewRateLimit(time.Second, krakenAuthRate),
-		request.NewRateLimit(time.Second, krakenUnauthRate),
-		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout))
-	k.APIUrlDefault = krakenAPIURL
-	k.APIUrl = k.APIUrlDefault
-}
-
-// Setup sets current exchange configuration
-func (k *Kraken) Setup(exch config.ExchangeConfig) {
-	if !exch.Enabled {
-		k.SetEnabled(false)
-	} else {
-		k.Enabled = true
-		k.AuthenticatedAPISupport = exch.AuthenticatedAPISupport
-		k.SetAPIKeys(exch.APIKey, exch.APISecret, "", false)
-		k.SetHTTPClientTimeout(exch.HTTPTimeout)
-		k.SetHTTPClientUserAgent(exch.HTTPUserAgent)
-		k.RESTPollingDelay = exch.RESTPollingDelay
-		k.Verbose = exch.Verbose
-		k.BaseCurrencies = exch.BaseCurrencies
-		k.AvailablePairs = exch.AvailablePairs
-		k.EnabledPairs = exch.EnabledPairs
-		err := k.SetCurrencyPairFormat()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = k.SetAssetTypes()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = k.SetAutoPairDefaults()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = k.SetAPIURL(&exch)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = k.SetClientProxyAddress(exch.ProxyAddress)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 }
 
 // GetServerTime returns current server time
 func (k *Kraken) GetServerTime() (TimeResponse, error) {
-	path := fmt.Sprintf("%s/%s/public/%s", k.APIUrl, krakenAPIVersion, krakenServerTime)
+	path := fmt.Sprintf("%s/%s/public/%s", k.API.Endpoints.URL, krakenAPIVersion, krakenServerTime)
 
 	var response struct {
 		Error  []string     `json:"error"`
@@ -145,7 +73,7 @@ func (k *Kraken) GetServerTime() (TimeResponse, error) {
 
 // GetAssets returns a full asset list
 func (k *Kraken) GetAssets() (map[string]Asset, error) {
-	path := fmt.Sprintf("%s/%s/public/%s", k.APIUrl, krakenAPIVersion, krakenAssets)
+	path := fmt.Sprintf("%s/%s/public/%s", k.API.Endpoints.URL, krakenAPIVersion, krakenAssets)
 
 	var response struct {
 		Error  []string         `json:"error"`
@@ -161,7 +89,7 @@ func (k *Kraken) GetAssets() (map[string]Asset, error) {
 
 // GetAssetPairs returns a full asset pair list
 func (k *Kraken) GetAssetPairs() (map[string]AssetPairs, error) {
-	path := fmt.Sprintf("%s/%s/public/%s", k.APIUrl, krakenAPIVersion, krakenAssetPairs)
+	path := fmt.Sprintf("%s/%s/public/%s", k.API.Endpoints.URL, krakenAPIVersion, krakenAssetPairs)
 
 	var response struct {
 		Error  []string              `json:"error"`
@@ -187,7 +115,7 @@ func (k *Kraken) GetTicker(symbol string) (Ticker, error) {
 	}
 
 	resp := Response{}
-	path := fmt.Sprintf("%s/%s/public/%s?%s", k.APIUrl, krakenAPIVersion, krakenTicker, values.Encode())
+	path := fmt.Sprintf("%s/%s/public/%s?%s", k.API.Endpoints.URL, krakenAPIVersion, krakenTicker, values.Encode())
 
 	err := k.SendHTTPRequest(path, &resp)
 	if err != nil {
@@ -267,7 +195,7 @@ func (k *Kraken) GetOHLC(symbol string) ([]OpenHighLowClose, error) {
 	var OHLC []OpenHighLowClose
 	var result Response
 
-	path := fmt.Sprintf("%s/%s/public/%s?%s", k.APIUrl, krakenAPIVersion, krakenOHLC, values.Encode())
+	path := fmt.Sprintf("%s/%s/public/%s?%s", k.API.Endpoints.URL, krakenAPIVersion, krakenOHLC, values.Encode())
 
 	err := k.SendHTTPRequest(path, &result)
 	if err != nil {
@@ -313,14 +241,21 @@ func (k *Kraken) GetDepth(symbol string) (Orderbook, error) {
 	var result interface{}
 	var orderBook Orderbook
 
-	path := fmt.Sprintf("%s/%s/public/%s?%s", k.APIUrl, krakenAPIVersion, krakenDepth, values.Encode())
+	path := fmt.Sprintf("%s/%s/public/%s?%s", k.API.Endpoints.URL, krakenAPIVersion, krakenDepth, values.Encode())
 
 	err := k.SendHTTPRequest(path, &result)
 	if err != nil {
 		return orderBook, err
 	}
 
+	if result == nil {
+		return orderBook, fmt.Errorf("Kraken GetDepth result is nil")
+	}
+
 	data := result.(map[string]interface{})
+	if data["result"] == nil {
+		return orderBook, fmt.Errorf("Kraken GetDepth data[result] is nil")
+	}
 	orderbookData := data["result"].(map[string]interface{})
 
 	var bidsData []interface{}
@@ -368,7 +303,7 @@ func (k *Kraken) GetTrades(symbol string) ([]RecentTrades, error) {
 	var recentTrades []RecentTrades
 	var result interface{}
 
-	path := fmt.Sprintf("%s/%s/public/%s?%s", k.APIUrl, krakenAPIVersion, krakenTrades, values.Encode())
+	path := fmt.Sprintf("%s/%s/public/%s?%s", k.API.Endpoints.URL, krakenAPIVersion, krakenTrades, values.Encode())
 
 	err := k.SendHTTPRequest(path, &result)
 	if err != nil {
@@ -409,7 +344,7 @@ func (k *Kraken) GetSpread(symbol string) ([]Spread, error) {
 	var peanutButter []Spread
 	var response interface{}
 
-	path := fmt.Sprintf("%s/%s/public/%s?%s", k.APIUrl, krakenAPIVersion, krakenSpread, values.Encode())
+	path := fmt.Sprintf("%s/%s/public/%s?%s", k.API.Endpoints.URL, krakenAPIVersion, krakenSpread, values.Encode())
 
 	err := k.SendHTTPRequest(path, &response)
 	if err != nil {
@@ -913,7 +848,7 @@ func (k *Kraken) SendHTTPRequest(path string, result interface{}) error {
 
 // SendAuthenticatedHTTPRequest sends an authenticated HTTP request
 func (k *Kraken) SendAuthenticatedHTTPRequest(method string, params url.Values, result interface{}) (err error) {
-	if !k.AuthenticatedAPISupport {
+	if !k.AllowAuthenticatedRequest() {
 		return fmt.Errorf(exchange.WarningAuthenticatedRequestWithoutCredentialsSet,
 			k.Name)
 	}
@@ -926,30 +861,24 @@ func (k *Kraken) SendAuthenticatedHTTPRequest(method string, params url.Values, 
 	}
 
 	params.Set("nonce", k.Nonce.String())
-
-	secret, err := common.Base64Decode(k.APISecret)
-	if err != nil {
-		return err
-	}
-
 	encoded := params.Encode()
 	shasum := common.GetSHA256([]byte(params.Get("nonce") + encoded))
 	signature := common.Base64Encode(common.GetHMAC(common.HashSHA512,
-		append([]byte(path), shasum...), secret))
+		append([]byte(path), shasum...), []byte(k.API.Credentials.Secret)))
 
 	if k.Verbose {
 		log.Debugf("Sending POST request to %s, path: %s, params: %s",
-			k.APIUrl,
+			k.API.Endpoints.URL,
 			path,
 			encoded)
 	}
 
 	headers := make(map[string]string)
-	headers["API-Key"] = k.APIKey
+	headers["API-Key"] = k.API.Credentials.Key
 	headers["API-Sign"] = signature
 
 	return k.SendPayload(http.MethodPost,
-		k.APIUrl+path,
+		k.API.Endpoints.URL+path,
 		headers,
 		strings.NewReader(encoded),
 		result,

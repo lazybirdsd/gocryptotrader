@@ -108,7 +108,7 @@ func UnloadExchange(name string) error {
 	}
 
 	exchCfg.Enabled = false
-	err = Bot.Config.UpdateExchangeConfig(&exchCfg)
+	err = Bot.Config.UpdateExchangeConfig(exchCfg)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,6 @@ func LoadExchange(name string, useWG bool, wg *sync.WaitGroup) error {
 	}
 
 	exch.SetDefaults()
-	Bot.Exchanges = append(Bot.Exchanges, exch)
 	exchCfg, err := Bot.Config.GetExchangeConfig(name)
 	if err != nil {
 		return err
@@ -213,6 +212,31 @@ func LoadExchange(name string, useWG bool, wg *sync.WaitGroup) error {
 
 	if Bot.Settings.EnableExchangeVerbose {
 		exchCfg.Verbose = true
+	}
+
+	if Bot.Settings.EnableExchangeWebsocketSupport {
+		if exchCfg.Features != nil {
+			if exchCfg.Features.Supports.Websocket {
+				exchCfg.Features.Enabled.Websocket = true
+			}
+		}
+	}
+
+	if Bot.Settings.EnableExchangeAutoPairUpdates {
+		if exchCfg.Features != nil {
+			if exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+				exchCfg.Features.Enabled.AutoPairUpdates = true
+			}
+		}
+	}
+
+	if Bot.Settings.DisableExchangeAutoPairUpdates {
+		if exchCfg.Features != nil {
+			if exchCfg.Features.Supports.RESTCapabilities.AutoPairUpdates {
+				exchCfg.Features.Enabled.AutoPairUpdates = false
+			}
+
+		}
 	}
 
 	if Bot.Settings.ExchangeHTTPUserAgent != "" {
@@ -228,7 +252,12 @@ func LoadExchange(name string, useWG bool, wg *sync.WaitGroup) error {
 	}
 
 	exchCfg.Enabled = true
-	exch.Setup(exchCfg)
+	err = exch.Setup(exchCfg)
+	if err != nil {
+		return err
+	}
+
+	Bot.Exchanges = append(Bot.Exchanges, exch)
 
 	if useWG {
 		exch.Start(wg)
@@ -278,7 +307,7 @@ func SetupExchanges() {
 		log.Debugf(
 			"%s: Exchange support: Enabled (Authenticated API support: %s - Verbose mode: %s).\n",
 			exch.Name,
-			common.IsEnabled(exch.AuthenticatedAPISupport),
+			common.IsEnabled(exch.API.AuthenticatedSupport),
 			common.IsEnabled(exch.Verbose),
 		)
 	}

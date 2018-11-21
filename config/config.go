@@ -16,6 +16,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/currency"
 	"github.com/thrasher-/gocryptotrader/currency/forexprovider"
 	"github.com/thrasher-/gocryptotrader/currency/forexprovider/base"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	log "github.com/thrasher-/gocryptotrader/logger"
 )
 
@@ -29,8 +30,12 @@ const (
 	configFileEncryptionEnabled            = 1
 	configFileEncryptionDisabled           = -1
 	configPairsLastUpdatedWarningThreshold = 30 // 30 days
-	configDefaultHTTPTimeout               = time.Second * 15
-	configMaxAuthFailres                   = 3
+	configDefaultHTTPTimeout               = time.Duration(time.Second * 15)
+	configMaxAuthFailures                  = 3
+
+	DefaultAPIKey      = "Key"
+	DefaultAPISecret   = "Secret"
+	DefaultAPIClientID = "ClientID"
 )
 
 // Constants here hold some messages
@@ -192,6 +197,32 @@ func (c *Config) CheckClientBankAccounts() error {
 	return nil
 }
 
+// PurgeExchangeAPICredentials purges the stored API credentials
+func (c *Config) PurgeExchangeAPICredentials() {
+	m.Lock()
+	defer m.Unlock()
+	for x := range c.Exchanges {
+		if c.Exchanges[x].API.AuthenticatedSupport {
+			c.Exchanges[x].API.AuthenticatedSupport = false
+
+			if c.Exchanges[x].API.CredentialsValidator.RequiresKey {
+				c.Exchanges[x].API.Credentials.Key = DefaultAPIKey
+			}
+
+			if c.Exchanges[x].API.CredentialsValidator.RequiresSecret {
+				c.Exchanges[x].API.Credentials.Secret = DefaultAPISecret
+			}
+
+			if c.Exchanges[x].API.CredentialsValidator.RequiresClientID {
+				c.Exchanges[x].API.Credentials.ClientID = DefaultAPIClientID
+			}
+
+			c.Exchanges[x].API.Credentials.PEMKey = ""
+			c.Exchanges[x].API.Credentials.OTPSecret = ""
+		}
+	}
+}
+
 // GetCommunicationsConfig returns the communications configuration
 func (c *Config) GetCommunicationsConfig() CommunicationsConfig {
 	m.Lock()
@@ -346,92 +377,302 @@ func (c *Config) CheckCommunicationsConfig() {
 	}
 }
 
-// CheckPairConsistency checks to see if the enabled pair exists in the
-// available pairs list
-func (c *Config) CheckPairConsistency(exchName string) error {
-	enabledPairs, err := c.GetEnabledPairs(exchName)
+// GetExchangeAssetTypes returns the exchanges supported asset types
+func (c *Config) GetExchangeAssetTypes(exchName string) (assets.AssetTypes, error) {
+	exchCfg, err := c.GetExchangeConfig(exchName)
 	if err != nil {
-		return err
+		return assets.AssetTypes{}, err
 	}
 
-	availPairs, err := c.GetAvailablePairs(exchName)
+	if exchCfg.CurrencyPairs == nil {
+		return assets.AssetTypes{}, fmt.Errorf("exchange %s currency pairs is nil", exchName)
+	}
+
+	return assets.New(exchCfg.CurrencyPairs.AssetTypes), nil
+}
+
+// SupportsExchangeAssetType returns whether or not the exchange supports the supplied asset type
+func (c *Config) SupportsExchangeAssetType(exchName string, assetType assets.AssetType) (bool, error) {
+	exchCfg, err := c.GetExchangeConfig(exchName)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	var pairs, pairsRemoved currency.Pairs
-	update := false
-	for x := range enabledPairs {
-		if !availPairs.Contains(enabledPairs[x], true) {
-			update = true
-			pairsRemoved = append(pairsRemoved, enabledPairs[x])
-			continue
-		}
-		pairs = append(pairs, enabledPairs[x])
+	if exchCfg.CurrencyPairs == nil {
+		return false, fmt.Errorf("exchange %s currency pairs is nil", exchName)
 	}
 
-	if !update {
-		return nil
+	result := assets.New(exchCfg.CurrencyPairs.AssetTypes)
+	if result == nil {
+		return false, fmt.Errorf("exchange %s invalid asset types", exchName)
 	}
 
+	return result.Contains(assetType), nil
+}
+
+// SetPairs sets the exchanges currency pairs
+func (c *Config) SetPairs(exchName string, assetType assets.AssetType, enabled bool, pairs currency.Pairs) error {
 	exchCfg, err := c.GetExchangeConfig(exchName)
 	if err != nil {
 		return err
 	}
 
-	if len(pairs) == 0 {
-		exchCfg.EnabledPairs = append(exchCfg.EnabledPairs,
-			availPairs.GetRandomPair())
-		log.Debugf("Exchange %s: No enabled pairs found in available pairs, randomly added %v\n",
-			exchName,
-			exchCfg.EnabledPairs)
-	} else {
-		exchCfg.EnabledPairs = pairs
-	}
-
-	err = c.UpdateExchangeConfig(&exchCfg)
+	supports, err := c.SupportsExchangeAssetType(exchName, assetType)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("Exchange %s: Removing enabled pair(s) %v from enabled pairs as it isn't an available pair",
-		exchName,
-		pairsRemoved.Strings())
+	if !supports {
+		return fmt.Errorf("exchange %s does not support asset type %v", exchName, assetType)
+	}
+
+	switch assetType {
+	case assets.AssetTypeSpot:
+		if enabled {
+			exchCfg.CurrencyPairs.Spot.Enabled = pairs
+		} else {
+			exchCfg.CurrencyPairs.Spot.Available = pairs
+		}
+	case assets.AssetTypeFutures:
+		if enabled {
+			exchCfg.CurrencyPairs.Futures.Enabled = pairs
+		} else {
+			exchCfg.CurrencyPairs.Futures.Available = pairs
+		}
+	}
+	return nil
+}
+
+// GetCurrencyPairConfig returns currency pair config for the desired exchange and asset type
+func (c *Config) GetCurrencyPairConfig(exchName string, assetType assets.AssetType) (*CurrencyPairConfig, error) {
+	exchCfg, err := c.GetExchangeConfig(exchName)
+	if err != nil {
+		return nil, err
+	}
+
+	supports, err := c.SupportsExchangeAssetType(exchName, assetType)
+	if err != nil {
+		return nil, err
+	}
+
+	if !supports {
+		return nil, fmt.Errorf("exchange %s does not support asset type %v", exchName, assetType)
+	}
+
+	if assetType == assets.AssetTypeSpot {
+		return exchCfg.CurrencyPairs.Spot, nil
+	}
+
+	return exchCfg.CurrencyPairs.Futures, nil
+}
+
+// CheckPairConfigFormats checks to see if the pair config format is valid
+func (c *Config) CheckPairConfigFormats(exchName string) error {
+	assetTypes, err := c.GetExchangeAssetTypes(exchName)
+	if err != nil {
+		return err
+	}
+
+	for x := range assetTypes {
+		pairFmt, err := c.GetPairFormat(exchName, assetTypes[x])
+		if err != nil {
+			return err
+		}
+
+		pairs, err := c.GetCurrencyPairConfig(exchName, assetTypes[x])
+		if err != nil {
+			return err
+		}
+
+		if pairs == nil {
+			continue
+		}
+
+		if len(pairs.Available) == 0 || len(pairs.Enabled) == 0 {
+			continue
+		}
+
+		checker := func(enabled bool) error {
+			pairsType := "enabled"
+			loadedPairs := pairs.Enabled
+			if !enabled {
+				pairsType = "available"
+				loadedPairs = pairs.Available
+			}
+
+			for y := range loadedPairs {
+				if pairFmt.Delimiter != "" {
+					if !common.StringContains(loadedPairs[y].String(), pairFmt.Delimiter) {
+						return fmt.Errorf("exchange %s %s %v pairs does not contain delimiter", exchName, pairsType, assetTypes[x])
+					}
+				}
+
+				if pairFmt.Index != "" {
+					if !common.StringContains(loadedPairs[y].String(), pairFmt.Index) {
+						return fmt.Errorf("exchange %s %s %v pairs does not contain index", exchName, pairsType, assetTypes[x])
+					}
+				}
+			}
+			return nil
+		}
+
+		err = checker(true)
+		if err != nil {
+			return err
+		}
+
+		err = checker(false)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// CheckPairConsistency checks to see if the enabled pair exists in the
+// available pairs list
+func (c *Config) CheckPairConsistency(exchName string) error {
+	assetTypes, err := c.GetExchangeAssetTypes(exchName)
+	if err != nil {
+		return err
+	}
+
+	err = c.CheckPairConfigFormats(exchName)
+	if err != nil {
+		return err
+	}
+
+	for x := range assetTypes {
+		enabledPairs, err := c.GetEnabledPairs(exchName, assetTypes[x])
+		if err != nil {
+			return err
+		}
+
+		availPairs, err := c.GetAvailablePairs(exchName, assetTypes[x])
+		if err != nil {
+			return err
+		}
+
+		if len(availPairs) == 0 {
+			continue
+		}
+
+		var pairs, pairsRemoved currency.Pairs
+		update := false
+
+		if len(enabledPairs) > 0 {
+			for x := range enabledPairs {
+				if !availPairs.Contains(enabledPairs[x], true) {
+					update = true
+					pairsRemoved = append(pairsRemoved, enabledPairs[x])
+					continue
+				}
+				pairs = append(pairs, enabledPairs[x])
+			}
+		} else {
+			update = true
+		}
+
+		if !update {
+			continue
+		}
+
+		if len(pairs) == 0 || len(enabledPairs) == 0 {
+			newPair := availPairs.GetRandomPair()
+			err = c.SetPairs(exchName, assetTypes[x], true,
+				currency.Pairs{newPair},
+			)
+			if err != nil {
+				return fmt.Errorf("exchange %s failed to set pairs: %v", exchName, err)
+			}
+			log.Printf("Exchange %s: No enabled pairs found in available pairs, randomly added %v pair.\n", exchName, newPair)
+			continue
+		} else {
+			err = c.SetPairs(exchName, assetTypes[x], true, pairs)
+			if err != nil {
+				return fmt.Errorf("exchange %s failed to set pairs: %v", exchName, err)
+			}
+		}
+		log.Debugf("Exchange %s: Removing enabled pair(s) %v from enabled pairs as it isn't an available pair.", exchName, pairsRemoved.Strings())
+	}
 	return nil
 }
 
 // SupportsPair returns true or not whether the exchange supports the supplied
 // pair
-func (c *Config) SupportsPair(exchName string, p currency.Pair) (bool, error) {
-	pairs, err := c.GetAvailablePairs(exchName)
+func (c *Config) SupportsPair(exchName string, p currency.Pair, assetType assets.AssetType) (bool, error) {
+	pairs, err := c.GetAvailablePairs(exchName, assetType)
 	if err != nil {
 		return false, err
 	}
 	return pairs.Contains(p, false), nil
 }
 
+// GetPairFormat returns the exchanges pair config storage format
+func (c *Config) GetPairFormat(exchName string, assetType assets.AssetType) (CurrencyPairFormatConfig, error) {
+	exchCfg, err := c.GetExchangeConfig(exchName)
+	if err != nil {
+		return CurrencyPairFormatConfig{}, err
+	}
+
+	if exchCfg.CurrencyPairs == nil {
+		return CurrencyPairFormatConfig{}, errors.New("exchange currency pairs type is nil")
+	}
+
+	if exchCfg.CurrencyPairs.UseGlobalPairFormat {
+		return *exchCfg.CurrencyPairs.ConfigFormat, nil
+	}
+
+	if assetType == assets.AssetTypeSpot {
+		return *exchCfg.CurrencyPairs.Spot.ConfigFormat, nil
+	}
+
+	return *exchCfg.CurrencyPairs.Futures.ConfigFormat, nil
+}
+
 // GetAvailablePairs returns a list of currency pairs for a specifc exchange
-func (c *Config) GetAvailablePairs(exchName string) (currency.Pairs, error) {
+func (c *Config) GetAvailablePairs(exchName string, assetType assets.AssetType) (currency.Pairs, error) {
 	exchCfg, err := c.GetExchangeConfig(exchName)
 	if err != nil {
 		return nil, err
 	}
 
-	return exchCfg.AvailablePairs.Format(exchCfg.ConfigCurrencyPairFormat.Delimiter,
-		exchCfg.ConfigCurrencyPairFormat.Index,
-		exchCfg.ConfigCurrencyPairFormat.Uppercase), nil
+	pairFormat, err := c.GetPairFormat(exchName, assetType)
+	if err != nil {
+		return nil, err
+	}
+
+	if assetType == assets.AssetTypeSpot {
+		return exchCfg.CurrencyPairs.Spot.Available.Format(pairFormat.Delimiter,
+			pairFormat.Index, pairFormat.Uppercase), nil
+
+	}
+
+	return exchCfg.CurrencyPairs.Futures.Available.Format(pairFormat.Delimiter,
+		pairFormat.Index, pairFormat.Uppercase), nil
 }
 
 // GetEnabledPairs returns a list of currency pairs for a specifc exchange
-func (c *Config) GetEnabledPairs(exchName string) (currency.Pairs, error) {
+func (c *Config) GetEnabledPairs(exchName string, assetType assets.AssetType) ([]currency.Pair, error) {
 	exchCfg, err := c.GetExchangeConfig(exchName)
 	if err != nil {
 		return nil, err
 	}
 
-	return exchCfg.AvailablePairs.Format(exchCfg.ConfigCurrencyPairFormat.Delimiter,
-		exchCfg.ConfigCurrencyPairFormat.Index,
-		exchCfg.ConfigCurrencyPairFormat.Uppercase), nil
+	pairFormat, err := c.GetPairFormat(exchName, assetType)
+	if err != nil {
+		return nil, err
+	}
+
+	if assetType == assets.AssetTypeSpot {
+		return exchCfg.CurrencyPairs.Spot.Enabled.Format(pairFormat.Delimiter,
+			pairFormat.Index, pairFormat.Uppercase), nil
+
+	}
+
+	return exchCfg.CurrencyPairs.Futures.Enabled.Format(pairFormat.Delimiter,
+		pairFormat.Index, pairFormat.Uppercase), nil
 }
 
 // GetEnabledExchanges returns a list of enabled exchanges
@@ -500,15 +741,15 @@ func (c *Config) GetAllExchangeConfigs() []ExchangeConfig {
 }
 
 // GetExchangeConfig returns exchange configurations by its indivdual name
-func (c *Config) GetExchangeConfig(name string) (ExchangeConfig, error) {
+func (c *Config) GetExchangeConfig(name string) (*ExchangeConfig, error) {
 	m.Lock()
 	defer m.Unlock()
 	for i := range c.Exchanges {
-		if c.Exchanges[i].Name == name {
-			return c.Exchanges[i], nil
+		if common.StringToLower(c.Exchanges[i].Name) == common.StringToLower(name) {
+			return &c.Exchanges[i], nil
 		}
 	}
-	return ExchangeConfig{}, fmt.Errorf(ErrExchangeNotFound, name)
+	return nil, fmt.Errorf(ErrExchangeNotFound, name)
 }
 
 // GetForexProviderConfig returns a forex provider configuration by its name
@@ -540,7 +781,7 @@ func (c *Config) UpdateExchangeConfig(e *ExchangeConfig) error {
 	m.Lock()
 	defer m.Unlock()
 	for i := range c.Exchanges {
-		if c.Exchanges[i].Name == e.Name {
+		if common.StringToLower(c.Exchanges[i].Name) == common.StringToLower(e.Name) {
 			c.Exchanges[i] = *e
 			return nil
 		}
@@ -557,99 +798,198 @@ func (c *Config) CheckExchangeConfigValues() error {
 			c.Exchanges[i].Name = "CoinbasePro"
 		}
 
-		if exch.WebsocketURL != WebsocketURLNonDefaultMessage {
-			if exch.WebsocketURL == "" {
-				c.Exchanges[i].WebsocketURL = WebsocketURLNonDefaultMessage
+		// Check to see if the old API storage format is used
+		if exch.APIKey != nil {
+			// It is, migrate settings to new format
+			c.Exchanges[i].API.AuthenticatedSupport = *exch.AuthenticatedAPISupport
+			c.Exchanges[i].API.Credentials.Key = *exch.APIKey
+			c.Exchanges[i].API.Credentials.Secret = *exch.APISecret
+
+			if exch.APIAuthPEMKey != nil {
+				c.Exchanges[i].API.Credentials.PEMKey = *exch.APIAuthPEMKey
+			}
+
+			if exch.APIAuthPEMKeySupport != nil {
+				c.Exchanges[i].API.PEMKeySupport = *exch.APIAuthPEMKeySupport
+			}
+
+			if exch.ClientID != nil {
+				c.Exchanges[i].API.Credentials.ClientID = *exch.ClientID
+			}
+
+			if exch.WebsocketURL != nil {
+				c.Exchanges[i].API.Endpoints.WebsocketURL = *exch.WebsocketURL
+			}
+
+			c.Exchanges[i].API.Endpoints.URL = *exch.APIURL
+			c.Exchanges[i].API.Endpoints.URLSecondary = *exch.APIURLSecondary
+
+			// Flush settings
+			c.Exchanges[i].AuthenticatedAPISupport = nil
+			c.Exchanges[i].APIKey = nil
+			c.Exchanges[i].APIAuthPEMKey = nil
+			c.Exchanges[i].APISecret = nil
+			c.Exchanges[i].APIURL = nil
+			c.Exchanges[i].APIURLSecondary = nil
+			c.Exchanges[i].WebsocketURL = nil
+			c.Exchanges[i].ClientID = nil
+		}
+
+		if exch.Features == nil {
+			c.Exchanges[i].Features = &FeaturesConfig{}
+		}
+
+		if exch.SupportsAutoPairUpdates != nil {
+			c.Exchanges[i].Features.Supports.RESTCapabilities.AutoPairUpdates = *exch.SupportsAutoPairUpdates
+			c.Exchanges[i].Features.Enabled.AutoPairUpdates = *exch.SupportsAutoPairUpdates
+			c.Exchanges[i].SupportsAutoPairUpdates = nil
+		}
+
+		if exch.Websocket != nil {
+			c.Exchanges[i].Features.Enabled.Websocket = *exch.Websocket
+			c.Exchanges[i].Websocket = nil
+		}
+
+		if exch.API.Endpoints.URL != APIURLNonDefaultMessage {
+			if exch.API.Endpoints.URL == "" {
+				// Set default if nothing set
+				c.Exchanges[i].API.Endpoints.URL = APIURLNonDefaultMessage
 			}
 		}
 
-		if exch.APIURL != APIURLNonDefaultMessage {
-			if exch.APIURL == "" {
+		if exch.API.Endpoints.URLSecondary != APIURLNonDefaultMessage {
+			if exch.API.Endpoints.URLSecondary == "" {
 				// Set default if nothing set
-				c.Exchanges[i].APIURL = APIURLNonDefaultMessage
+				c.Exchanges[i].API.Endpoints.URLSecondary = APIURLNonDefaultMessage
 			}
 		}
 
-		if exch.APIURLSecondary != APIURLNonDefaultMessage {
-			if exch.APIURLSecondary == "" {
-				// Set default if nothing set
-				c.Exchanges[i].APIURLSecondary = APIURLNonDefaultMessage
+		if exch.API.Endpoints.WebsocketURL != WebsocketURLNonDefaultMessage {
+			if exch.API.Endpoints.WebsocketURL == "" {
+				c.Exchanges[i].API.Endpoints.WebsocketURL = WebsocketURLNonDefaultMessage
 			}
+		}
+
+		// Check if see if the new currency pairs format is empty and flesh it out if so
+		if exch.CurrencyPairs == nil {
+			c.Exchanges[i].CurrencyPairs = new(CurrencyPairsConfig)
+
+			if c.Exchanges[i].PairsLastUpdated != nil {
+				c.Exchanges[i].CurrencyPairs.LastUpdated = *c.Exchanges[i].PairsLastUpdated
+			}
+
+			c.Exchanges[i].CurrencyPairs.ConfigFormat = c.Exchanges[i].ConfigCurrencyPairFormat
+			c.Exchanges[i].CurrencyPairs.RequestFormat = c.Exchanges[i].RequestCurrencyPairFormat
+			c.Exchanges[i].CurrencyPairs.AssetTypes = *c.Exchanges[i].AssetTypes
+			c.Exchanges[i].CurrencyPairs.UseGlobalPairFormat = true
+
+			c.Exchanges[i].CurrencyPairs.Spot = new(CurrencyPairConfig)
+			c.Exchanges[i].CurrencyPairs.Spot.Available = *c.Exchanges[i].AvailablePairs
+			c.Exchanges[i].CurrencyPairs.Spot.Enabled = *c.Exchanges[i].EnabledPairs
+
+			// flush old values
+			c.Exchanges[i].PairsLastUpdated = nil
+			c.Exchanges[i].ConfigCurrencyPairFormat = nil
+			c.Exchanges[i].RequestCurrencyPairFormat = nil
+			c.Exchanges[i].AssetTypes = nil
+			c.Exchanges[i].AvailablePairs = nil
+			c.Exchanges[i].EnabledPairs = nil
 		}
 
 		if exch.Enabled {
 			if exch.Name == "" {
-				return fmt.Errorf(ErrExchangeNameEmpty, i)
+				log.Error(ErrExchangeNameEmpty, i)
+				c.Exchanges[i].Enabled = false
+				continue
 			}
-			if len(exch.AvailablePairs) == 0 {
-				return fmt.Errorf(ErrExchangeAvailablePairsEmpty, exch.Name)
-			}
-			if len(exch.EnabledPairs) == 0 {
-				return fmt.Errorf(ErrExchangeEnabledPairsEmpty, exch.Name)
-			}
-			if len(exch.BaseCurrencies) == 0 {
-				return fmt.Errorf(ErrExchangeBaseCurrenciesEmpty, exch.Name)
-			}
-			if exch.AuthenticatedAPISupport { // non-fatal error
-				if exch.APIKey == "" || exch.APISecret == "" ||
-					exch.APIKey == DefaultUnsetAPIKey ||
-					exch.APISecret == DefaultUnsetAPISecret {
-					c.Exchanges[i].AuthenticatedAPISupport = false
+			if c.Exchanges[i].API.AuthenticatedSupport { // non-fatal error
+				if c.Exchanges[i].API.CredentialsValidator.RequiresKey && (c.Exchanges[i].API.Credentials.Key == "" || c.Exchanges[i].API.Credentials.Key == DefaultAPIKey) {
+					c.Exchanges[i].API.AuthenticatedSupport = false
 					log.Warnf(WarningExchangeAuthAPIDefaultOrEmptyValues, exch.Name)
-				} else if exch.Name == "ITBIT" || exch.Name == "Bitstamp" || exch.Name == "COINUT" || exch.Name == "CoinbasePro" {
-					if exch.ClientID == "" || exch.ClientID == "ClientID" {
-						c.Exchanges[i].AuthenticatedAPISupport = false
-						log.Warnf(WarningExchangeAuthAPIDefaultOrEmptyValues, exch.Name)
-					}
+				}
+
+				if c.Exchanges[i].API.CredentialsValidator.RequiresSecret && (c.Exchanges[i].API.Credentials.Secret == "" || c.Exchanges[i].API.Credentials.Secret == DefaultAPISecret) {
+					c.Exchanges[i].API.AuthenticatedSupport = false
+					log.Warnf(WarningExchangeAuthAPIDefaultOrEmptyValues, exch.Name)
+				}
+
+				if c.Exchanges[i].API.CredentialsValidator.RequiresClientID && (c.Exchanges[i].API.Credentials.ClientID == DefaultAPIClientID || c.Exchanges[i].API.Credentials.ClientID == "") {
+					c.Exchanges[i].API.AuthenticatedSupport = false
+					log.Warnf(WarningExchangeAuthAPIDefaultOrEmptyValues, exch.Name)
 				}
 			}
-			if !exch.SupportsAutoPairUpdates {
-				lastUpdated := common.UnixTimestampToTime(exch.PairsLastUpdated)
+			if !c.Exchanges[i].Features.Supports.RESTCapabilities.AutoPairUpdates && !c.Exchanges[i].Features.Supports.WebsocketCapabilities.AutoPairUpdates {
+				lastUpdated := common.UnixTimestampToTime(c.Exchanges[i].CurrencyPairs.LastUpdated)
 				lastUpdated = lastUpdated.AddDate(0, 0, configPairsLastUpdatedWarningThreshold)
 				if lastUpdated.Unix() <= time.Now().Unix() {
 					log.Warnf(WarningPairsLastUpdatedThresholdExceeded, exch.Name, configPairsLastUpdatedWarningThreshold)
 				}
 			}
-
 			if exch.HTTPTimeout <= 0 {
 				log.Warnf("Exchange %s HTTP Timeout value not set, defaulting to %v.", exch.Name, configDefaultHTTPTimeout)
 				c.Exchanges[i].HTTPTimeout = configDefaultHTTPTimeout
 			}
 
+			if exch.HTTPRateLimiter != nil {
+				if exch.HTTPRateLimiter.Authenticated.Duration < 0 {
+					log.Printf("Exchange %s HTTP Rate Limiter authenticated duration set to negative value, defaulting to 0", exch.Name)
+					c.Exchanges[i].HTTPRateLimiter.Authenticated.Duration = 0
+				}
+
+				if exch.HTTPRateLimiter.Authenticated.Rate < 0 {
+					log.Printf("Exchange %s HTTP Rate Limiter authenticated rate set to negative value, defaulting to 0", exch.Name)
+					c.Exchanges[i].HTTPRateLimiter.Authenticated.Rate = 0
+				}
+
+				if exch.HTTPRateLimiter.Unauthenticated.Duration < 0 {
+					log.Printf("Exchange %s HTTP Rate Limiter unauthenticated duration set to negative value, defaulting to 0", exch.Name)
+					c.Exchanges[i].HTTPRateLimiter.Unauthenticated.Duration = 0
+				}
+
+				if exch.HTTPRateLimiter.Unauthenticated.Rate < 0 {
+					log.Printf("Exchange %s HTTP Rate Limiter unauthenticated rate set to negative value, defaulting to 0", exch.Name)
+					c.Exchanges[i].HTTPRateLimiter.Unauthenticated.Rate = 0
+				}
+			}
+
 			err := c.CheckPairConsistency(exch.Name)
 			if err != nil {
 				log.Errorf("Exchange %s: CheckPairConsistency error: %s", exch.Name, err)
+				c.Exchanges[i].Enabled = false
+				continue
 			}
 
-			if len(exch.BankAccounts) == 0 {
-				c.Exchanges[i].BankAccounts = append(c.Exchanges[i].BankAccounts, BankAccount{})
-			} else {
-				for y := range c.Exchanges[i].BankAccounts {
-					bankAccount := &c.Exchanges[i].BankAccounts[y]
-					if bankAccount.Enabled {
-						if bankAccount.BankName == "" || bankAccount.BankAddress == "" {
-							log.Warnf("banking details for %s is enabled but variables not set",
+			if len(exch.BankAccounts) > 0 {
+				for x := range exch.BankAccounts {
+					if exch.BankAccounts[x].Enabled == true {
+						bankError := false
+						if exch.BankAccounts[x].BankName == "" || exch.BankAccounts[x].BankAddress == "" {
+							log.Printf("banking details for %s is enabled but variables not set",
 								exch.Name)
-							bankAccount.Enabled = false
+							bankError = true
 						}
 
-						if bankAccount.AccountName == "" || bankAccount.AccountNumber == "" {
-							log.Warnf("banking account details for %s variables not set",
+						if exch.BankAccounts[x].AccountName == "" || exch.BankAccounts[x].AccountNumber == "" {
+							log.Printf("banking account details for %s variables not set",
 								exch.Name)
-							bankAccount.Enabled = false
+							bankError = true
 						}
 
-						if bankAccount.SupportedCurrencies == "" {
-							log.Warnf("banking account details for %s acceptable funding currencies not set",
+						if exch.BankAccounts[x].SupportedCurrencies == "" {
+							log.Printf("banking account details for %s acceptable funding currencies not set",
 								exch.Name)
-							bankAccount.Enabled = false
+							bankError = true
 						}
 
-						if bankAccount.BSBNumber == "" && bankAccount.IBAN == "" &&
-							bankAccount.SWIFTCode == "" {
-							log.Warnf("banking account details for %s critical banking numbers not set",
+						if exch.BankAccounts[x].BSBNumber == "" && exch.BankAccounts[x].IBAN == "" &&
+							exch.BankAccounts[x].SWIFTCode == "" {
+							log.Printf("banking account details for %s critical banking numbers not set",
 								exch.Name)
-							bankAccount.Enabled = false
+							bankError = true
+						}
+
+						if bankError {
+							exch.BankAccounts[x].Enabled = false
 						}
 					}
 				}
@@ -870,9 +1210,9 @@ func (c *Config) RetrieveConfigCurrencyPairs(enabledOnly bool) error {
 		var pairs []currency.Pair
 		var err error
 		if !c.Exchanges[x].Enabled && enabledOnly {
-			pairs, err = c.GetEnabledPairs(c.Exchanges[x].Name)
+			pairs, err = c.GetEnabledPairs(c.Exchanges[x].Name, assets.AssetTypeSpot)
 		} else {
-			pairs, err = c.GetAvailablePairs(c.Exchanges[x].Name)
+			pairs, err = c.GetAvailablePairs(c.Exchanges[x].Name, assets.AssetTypeSpot)
 		}
 
 		if err != nil {
@@ -1057,7 +1397,7 @@ func (c *Config) ReadConfig(configPath string) error {
 	} else {
 		errCounter := 0
 		for {
-			if errCounter >= configMaxAuthFailres {
+			if errCounter >= configMaxAuthFailures {
 				return errors.New("failed to decrypt config after 3 attempts")
 			}
 			key, err := PromptForConfigKey(IsInitialSetup)
@@ -1078,7 +1418,7 @@ func (c *Config) ReadConfig(configPath string) error {
 
 			err = ConfirmConfigJSON(data, &c)
 			if err != nil {
-				if errCounter < configMaxAuthFailres {
+				if errCounter < configMaxAuthFailures {
 					log.Errorf("Invalid password.")
 				}
 				errCounter++
@@ -1140,7 +1480,15 @@ func (c *Config) CheckConfig() error {
 		c.WebsocketServer.AdminUsername = c.RESTServer.AdminUsername
 		c.WebsocketServer.AdminPassword = c.RESTServer.AdminPassword
 		c.WebsocketServer.Enabled = c.RESTServer.Enabled
-		c.WebsocketServer.ListenAddress = c.Webserver.ListenAddress
+		c.WebsocketServer.WebsocketConnectionLimit = c.Webserver.WebsocketConnectionLimit
+		c.WebsocketServer.WebsocketMaxAuthFailures = c.Webserver.WebsocketMaxAuthFailures
+		c.WebsocketServer.WebsocketAllowInsecureOrigin = c.Webserver.WebsocketAllowInsecureOrigin
+
+		// Set listen address and ensure that we don't use a duplicate port
+		port := common.ExtractPort(c.Webserver.ListenAddress)
+		port++
+		newHost := common.SplitStrings(c.Webserver.ListenAddress, ":")[0] + ":" + strconv.Itoa(port)
+		c.WebsocketServer.ListenAddress = newHost
 
 		// Then flush the old webserver settings
 		c.Webserver = nil

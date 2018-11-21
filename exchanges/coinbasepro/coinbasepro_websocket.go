@@ -23,8 +23,10 @@ const (
 // currencies
 func (c *CoinbasePro) WebsocketSubscriber() error {
 	currencies := []string{}
-	for _, x := range c.EnabledPairs.Strings() {
-		currency := x[0:3] + "-" + x[3:]
+
+	for _, x := range c.CurrencyPairs.Spot.Enabled {
+		currency := x.Base.String() + c.CurrencyPairs.RequestFormat.Delimiter +
+			x.Quote.String()
 		currencies = append(currencies, currency)
 	}
 

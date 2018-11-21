@@ -11,6 +11,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 )
 
@@ -63,7 +64,7 @@ func (z *ZB) WsSubscribe() error {
 		return err
 	}
 
-	for _, c := range z.GetEnabledCurrencies() {
+	for _, c := range z.GetEnabledPairs(assets.AssetTypeSpot) {
 		cPair := c.Base.Lower().String() + c.Quote.Lower().String()
 
 		ticker := Subscription{

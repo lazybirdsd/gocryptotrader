@@ -14,8 +14,8 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
-	"github.com/thrasher-/gocryptotrader/exchanges/ticker"
 )
 
 const (
@@ -29,7 +29,7 @@ var m sync.Mutex
 func (b *Binance) SeedLocalCache(p currency.Pair) error {
 	var newOrderBook orderbook.Base
 
-	formattedPair := exchange.FormatExchangeCurrency(b.Name, p)
+	formattedPair := b.FormatExchangeCurrency(p, assets.AssetTypeSpot)
 
 	orderbookNew, err := b.GetOrderBook(
 		OrderBookDataRequestParams{
@@ -59,8 +59,7 @@ func (b *Binance) SeedLocalCache(p currency.Pair) error {
 	}
 
 	newOrderBook.Pair = currency.NewPairFromString(formattedPair.String())
-	newOrderBook.AssetType = ticker.Spot
-
+	newOrderBook.AssetType = assets.AssetTypeSpot
 	return b.Websocket.Orderbook.LoadSnapshot(&newOrderBook, b.GetName(), false)
 }
 
@@ -132,16 +131,16 @@ func (b *Binance) WSConnect() error {
 
 	tick := strings.ToLower(
 		strings.Replace(
-			strings.Join(b.EnabledPairs.Strings(), "@ticker/"), "-", "", -1)) + "@ticker"
+			strings.Join(b.CurrencyPairs.Spot.Enabled.Strings(), "@ticker/"), "-", "", -1)) + "@ticker"
 	trade := strings.ToLower(
 		strings.Replace(
-			strings.Join(b.EnabledPairs.Strings(), "@trade/"), "-", "", -1)) + "@trade"
+			strings.Join(b.CurrencyPairs.Spot.Enabled.Strings(), "@trade/"), "-", "", -1)) + "@trade"
 	kline := strings.ToLower(
 		strings.Replace(
-			strings.Join(b.EnabledPairs.Strings(), "@kline_1m/"), "-", "", -1)) + "@kline_1m"
+			strings.Join(b.CurrencyPairs.Spot.Enabled.Strings(), "@kline_1m/"), "-", "", -1)) + "@kline_1m"
 	depth := strings.ToLower(
 		strings.Replace(
-			strings.Join(b.EnabledPairs.Strings(), "@depth/"), "-", "", -1)) + "@depth"
+			strings.Join(b.CurrencyPairs.Spot.Enabled.Strings(), "@depth/"), "-", "", -1)) + "@depth"
 
 	wsurl := b.Websocket.GetWebsocketURL() +
 		"/stream?streams=" +
@@ -164,8 +163,8 @@ func (b *Binance) WSConnect() error {
 		Dialer.Proxy = http.ProxyURL(u)
 	}
 
-	for _, ePair := range b.GetEnabledCurrencies() {
-		err = b.SeedLocalCache(ePair)
+	for _, ePair := range b.GetEnabledPairs(assets.AssetTypeSpot) {
+		err := b.SeedLocalCache(ePair)
 		if err != nil {
 			return err
 		}
@@ -276,7 +275,7 @@ func (b *Binance) WsHandleData() {
 
 					wsTicker.Timestamp = time.Unix(0, t.EventTime)
 					wsTicker.Pair = currency.NewPairFromString(t.Symbol)
-					wsTicker.AssetType = ticker.Spot
+					wsTicker.AssetType = assets.AssetTypeSpot
 					wsTicker.Exchange = b.GetName()
 					wsTicker.ClosePrice, _ = strconv.ParseFloat(t.CurrDayClose, 64)
 					wsTicker.Quantity, _ = strconv.ParseFloat(t.TotalTradedVolume, 64)
@@ -300,7 +299,7 @@ func (b *Binance) WsHandleData() {
 
 					wsKline.Timestamp = time.Unix(0, kline.EventTime)
 					wsKline.Pair = currency.NewPairFromString(kline.Symbol)
-					wsKline.AssetType = ticker.Spot
+					wsKline.AssetType = assets.AssetTypeSpot
 					wsKline.Exchange = b.GetName()
 					wsKline.StartTime = time.Unix(0, kline.Kline.StartTime)
 					wsKline.CloseTime = time.Unix(0, kline.Kline.CloseTime)

@@ -28,11 +28,11 @@ func (b *BTSE) WebsocketSubscriber() error {
 		Channels: []websocketChannel{
 			{
 				Name:       "snapshot",
-				ProductIDs: b.EnabledPairs.Strings(),
+				ProductIDs: b.CurrencyPairs.Spot.Enabled.Strings(),
 			},
 			{
 				Name:       "ticker",
-				ProductIDs: b.EnabledPairs.Strings(),
+				ProductIDs: b.CurrencyPairs.Spot.Enabled.Strings(),
 			},
 		},
 	}

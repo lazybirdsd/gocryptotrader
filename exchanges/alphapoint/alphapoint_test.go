@@ -20,22 +20,22 @@ func TestSetDefaults(t *testing.T) {
 	SetDefaults := Alphapoint{}
 
 	SetDefaults.SetDefaults()
-	if SetDefaults.APIUrl != "https://sim3.alphapoint.com:8400" {
-		t.Error("Test Failed - SetDefaults: String Incorrect -", SetDefaults.APIUrl)
+	if SetDefaults.API.Endpoints.URL != "https://sim3.alphapoint.com:8400" {
+		t.Error("Test Failed - SetDefaults: String Incorrect -", SetDefaults.API.Endpoints.URL)
 	}
-	if SetDefaults.WebsocketURL != "wss://sim3.alphapoint.com:8401/v1/GetTicker/" {
-		t.Error("Test Failed - SetDefaults: String Incorrect -", SetDefaults.WebsocketURL)
+	if SetDefaults.API.Endpoints.WebsocketURL != "wss://sim3.alphapoint.com:8401/v1/GetTicker/" {
+		t.Error("Test Failed - SetDefaults: String Incorrect -", SetDefaults.API.Endpoints.WebsocketURL)
 	}
 }
 
 func testSetAPIKey(a *Alphapoint) {
-	a.APIKey = testAPIKey
-	a.APISecret = testAPISecret
-	a.AuthenticatedAPISupport = true
+	a.API.Credentials.Key = testAPIKey
+	a.API.Credentials.Secret = testAPISecret
+	a.API.AuthenticatedSupport = true
 }
 
 func testIsAPIKeysSet(a *Alphapoint) bool {
-	if testAPIKey != "" && testAPISecret != "" && a.AuthenticatedAPISupport {
+	if testAPIKey != "" && testAPISecret != "" && a.API.AuthenticatedSupport {
 		return true
 	}
 	return false
@@ -526,8 +526,7 @@ func TestGetOrderHistory(t *testing.T) {
 // ----------------------------------------------------------------------------------------------------------------------------
 
 func areTestAPIKeysSet(a *Alphapoint) bool {
-	if a.APIKey != "" && a.APIKey != "Key" &&
-		a.APISecret != "" && a.APISecret != "Secret" {
+	if a.ValidateAPICredentials() {
 		return true
 	}
 	return false

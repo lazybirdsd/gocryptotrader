@@ -12,6 +12,7 @@ import (
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/currency"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	"github.com/thrasher-/gocryptotrader/exchanges/orderbook"
 )
 
@@ -50,7 +51,7 @@ func (g *Gateio) WsConnect() error {
 
 // WsSubscribe subscribes to the full websocket suite on ZB exchange
 func (g *Gateio) WsSubscribe() error {
-	enabled := g.GetEnabledCurrencies()
+	enabled := g.GetEnabledPairs(assets.AssetTypeSpot)
 
 	for _, c := range enabled {
 		ticker := WebsocketRequest{

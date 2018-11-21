@@ -29,9 +29,9 @@ func TestSetup(t *testing.T) {
 	if err != nil {
 		t.Error("Test Failed - HitBTC Setup() init error")
 	}
-	hitbtcConfig.AuthenticatedAPISupport = true
-	hitbtcConfig.APIKey = apiKey
-	hitbtcConfig.APISecret = apiSecret
+	hitbtcConfig.API.AuthenticatedSupport = true
+	hitbtcConfig.API.Credentials.Key = apiKey
+	hitbtcConfig.API.Credentials.Secret = apiSecret
 
 	h.Setup(hitbtcConfig)
 }
@@ -206,11 +206,7 @@ func TestGetOrderHistory(t *testing.T) {
 // Any tests below this line have the ability to impact your orders on the exchange. Enable canManipulateRealOrders to run them
 // ----------------------------------------------------------------------------------------------------------------------------
 func areTestAPIKeysSet() bool {
-	if h.APIKey != "" && h.APIKey != "Key" &&
-		h.APISecret != "" && h.APISecret != "Secret" {
-		return true
-	}
-	return false
+	return h.ValidateAPICredentials()
 }
 
 func TestSubmitOrder(t *testing.T) {

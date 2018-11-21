@@ -49,8 +49,8 @@ func TestSetup(t *testing.T) {
 	if testSetupRan {
 		return
 	}
-	if o.APIKey == apiKey && o.APISecret == apiSecret &&
-		o.ClientID == passphrase && apiKey != "" && apiSecret != "" && passphrase != "" {
+	if o.API.Credentials.Key == apiKey && o.API.Credentials.Secret == apiSecret &&
+		o.API.Credentials.ClientID == passphrase && apiKey != "" && apiSecret != "" && passphrase != "" {
 		return
 	}
 	o.ExchangeName = OKGroupExchange
@@ -62,21 +62,17 @@ func TestSetup(t *testing.T) {
 		t.Fatalf("Test Failed - %v Setup() init error", OKGroupExchange)
 	}
 
-	okcoinConfig.AuthenticatedAPISupport = true
-	okcoinConfig.APIKey = apiKey
-	okcoinConfig.APISecret = apiSecret
-	okcoinConfig.ClientID = passphrase
-	okcoinConfig.WebsocketURL = o.WebsocketURL
+	okcoinConfig.API.AuthenticatedSupport = true
+	okcoinConfig.API.Credentials.Key = apiKey
+	okcoinConfig.API.Credentials.Secret = apiSecret
+	okcoinConfig.API.Credentials.ClientID = passphrase
+	okcoinConfig.API.Endpoints.WebsocketURL = o.API.Endpoints.WebsocketURL
 	o.Setup(okcoinConfig)
 	testSetupRan = true
 }
 
 func areTestAPIKeysSet() bool {
-	if o.APIKey != "" && o.APIKey != "Key" &&
-		o.APISecret != "" && o.APISecret != "Secret" {
-		return true
-	}
-	return false
+	return o.ValidateAPICredentials()
 }
 
 func testStandardErrorHandling(t *testing.T, err error) {
@@ -94,8 +90,8 @@ func setupWSConnection() error {
 	err := o.WebsocketSetup(o.WsConnect,
 		o.Name,
 		true,
-		o.WebsocketURL,
-		o.WebsocketURL)
+		o.API.Endpoints.WebsocketURL,
+		o.API.Endpoints.WebsocketURL)
 	o.Websocket.DataHandler = make(chan interface{}, 500)
 	if err != nil {
 		return err

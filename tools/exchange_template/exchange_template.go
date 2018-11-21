@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
+
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/config"
 )
@@ -117,10 +119,12 @@ func main() {
 	newExchConfig := config.ExchangeConfig{}
 	newExchConfig.Name = capName
 	newExchConfig.Enabled = true
-	newExchConfig.RESTPollingDelay = 10
-	newExchConfig.APIKey = "Key"
-	newExchConfig.APISecret = "Secret"
-	newExchConfig.AssetTypes = "SPOT"
+	newExchConfig.API.Credentials.Key = "Key"
+	newExchConfig.API.Credentials.Secret = "Secret"
+
+	newExchConfig.CurrencyPairs = &config.CurrencyPairsConfig{
+		AssetTypes: assets.AssetTypeSpot.String(),
+	}
 
 	configTestFile.Exchanges = append(configTestFile.Exchanges, newExchConfig)
 	// TODO sorting function so exchanges are in alphabetical order - low priority

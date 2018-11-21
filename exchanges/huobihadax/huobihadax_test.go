@@ -21,32 +21,50 @@ const (
 
 var h HUOBIHADAX
 
-// getDefaultConfig returns a default huobi config
+// getDefaultConfig returns a default hadax config
 func getDefaultConfig() config.ExchangeConfig {
 	return config.ExchangeConfig{
-		Name:                    "huobihadax",
-		Enabled:                 true,
-		Verbose:                 true,
-		Websocket:               false,
-		UseSandbox:              false,
-		RESTPollingDelay:        10,
-		HTTPTimeout:             15000000000,
-		AuthenticatedAPISupport: true,
-		APIKey:                  "",
-		APISecret:               "",
-		ClientID:                "",
-		AvailablePairs:          currency.NewPairsFromStrings([]string{"BTC-USDT", "BCH-USDT"}),
-		EnabledPairs:            currency.NewPairsFromStrings([]string{"BTC-USDT"}),
-		BaseCurrencies:          currency.NewCurrenciesFromStringArray([]string{"USD"}),
-		AssetTypes:              "SPOT",
-		SupportsAutoPairUpdates: false,
-		ConfigCurrencyPairFormat: &config.CurrencyPairFormatConfig{
-			Uppercase: true,
-			Delimiter: "-",
+		Name:    "Huobi",
+		Enabled: true,
+		Verbose: true,
+
+		Features: &config.FeaturesConfig{
+			Supports: config.FeaturesSupportedConfig{
+				REST:      true,
+				Websocket: false,
+
+				RESTCapabilities: config.ProtocolFeaturesConfig{
+					AutoPairUpdates: false,
+				},
+			},
+			Enabled: config.FeaturesEnabledConfig{
+				AutoPairUpdates: false,
+				Websocket:       false,
+			},
 		},
-		RequestCurrencyPairFormat: &config.CurrencyPairFormatConfig{
-			Uppercase: false,
+
+		API: config.APIConfig{
+			AuthenticatedSupport: false,
 		},
+
+		HTTPTimeout: 15000000000,
+		CurrencyPairs: &config.CurrencyPairsConfig{
+			AssetTypes:          "Spot",
+			UseGlobalPairFormat: true,
+			ConfigFormat: &config.CurrencyPairFormatConfig{
+				Uppercase: true,
+				Delimiter: "-",
+			},
+			RequestFormat: &config.CurrencyPairFormatConfig{
+				Uppercase: false,
+			},
+			Spot: &config.CurrencyPairConfig{
+				Available: currency.NewPairsFromStrings([]string{"BTC-USDT", "BCH-USDT"}),
+				Enabled:   currency.NewPairsFromStrings([]string{"BTC-USDT"}),
+			},
+		},
+
+		BaseCurrencies: currency.NewCurrenciesFromStringArray([]string{"USD"}),
 	}
 }
 
@@ -61,9 +79,9 @@ func TestSetup(t *testing.T) {
 	if err != nil {
 		t.Error("Test Failed - HuobiHadax Setup() init error")
 	}
-	hadaxConfig.AuthenticatedAPISupport = true
-	hadaxConfig.APIKey = apiKey
-	hadaxConfig.APISecret = apiSecret
+	hadaxConfig.API.AuthenticatedSupport = true
+	hadaxConfig.API.Credentials.Key = apiKey
+	hadaxConfig.API.Credentials.Secret = apiSecret
 
 	h.Setup(hadaxConfig)
 }
@@ -155,7 +173,7 @@ func TestGetTimestamp(t *testing.T) {
 func TestGetAccounts(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -168,7 +186,7 @@ func TestGetAccounts(t *testing.T) {
 func TestGetAccountBalance(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -187,7 +205,7 @@ func TestGetAccountBalance(t *testing.T) {
 func TestSpotNewOrder(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -210,7 +228,7 @@ func TestSpotNewOrder(t *testing.T) {
 func TestCancelExistingOrder(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -223,7 +241,7 @@ func TestCancelExistingOrder(t *testing.T) {
 func TestGetOrder(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -236,7 +254,7 @@ func TestGetOrder(t *testing.T) {
 func TestGetMarginLoanOrders(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -249,7 +267,7 @@ func TestGetMarginLoanOrders(t *testing.T) {
 func TestGetMarginAccountBalance(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -262,7 +280,7 @@ func TestGetMarginAccountBalance(t *testing.T) {
 func TestCancelWithdraw(t *testing.T) {
 	t.Parallel()
 
-	if h.APIKey == "" || h.APISecret == "" || h.APIAuthPEMKey == "" {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -409,11 +427,7 @@ func TestGetOrderHistory(t *testing.T) {
 // Any tests below this line have the ability to impact your orders on the exchange. Enable canManipulateRealOrders to run them
 // ----------------------------------------------------------------------------------------------------------------------------
 func areTestAPIKeysSet() bool {
-	if h.APIKey != "" && h.APIKey != "Key" &&
-		h.APISecret != "" && h.APISecret != "Secret" {
-		return true
-	}
-	return false
+	return h.ValidateAPICredentials()
 }
 
 func TestSubmitOrder(t *testing.T) {
@@ -424,8 +438,7 @@ func TestSubmitOrder(t *testing.T) {
 		t.Skip("API keys set, canManipulateRealOrders false, skipping test")
 	}
 
-	if (h.APIKey == "" || h.APIKey == "Key") &&
-		(h.APISecret == "" || h.APISecret == "Secret") {
+	if !h.ValidateAPICredentials() {
 		t.Skip()
 	}
 
@@ -437,14 +450,12 @@ func TestSubmitOrder(t *testing.T) {
 
 	accounts, err := h.GetAccounts()
 	if err != nil {
-		t.Errorf("Failed to get accounts. Err: %s", err)
+		t.Fatalf("Failed to get accounts. Err: %s", err)
 	}
 
 	response, err := h.SubmitOrder(p, exchange.BuyOrderSide, exchange.LimitOrderType, 1, 10, strconv.FormatInt(accounts[0].ID, 10))
 	if areTestAPIKeysSet() && (err != nil || !response.IsOrderPlaced) {
 		t.Errorf("Order failed to be placed: %v", err)
-	} else if !areTestAPIKeysSet() && err == nil {
-		t.Error("Expecting an error when no keys are set")
 	}
 }
 
