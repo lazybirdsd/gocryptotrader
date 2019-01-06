@@ -57,12 +57,12 @@ func (b *BTSE) SetDefaults() {
 
 		UseGlobalPairFormat: true,
 		RequestFormat: config.CurrencyPairFormatConfig{
-			Delimiter: "-",
 			Uppercase: true,
+			Delimiter: "-",
 		},
 		ConfigFormat: config.CurrencyPairFormatConfig{
-			Delimiter: "-",
 			Uppercase: true,
+			Delimiter: "-",
 		},
 	}
 
@@ -72,12 +72,12 @@ func (b *BTSE) SetDefaults() {
 			Websocket: true,
 
 			Trading: exchange.TradingSupported{
-				Spot: true,
+				Spot:   true,
+				Margin: true,
 			},
 
 			RESTCapabilities: exchange.ProtocolFeatures{
 				AutoPairUpdates: true,
-				TickerBatching:  false,
 			},
 		},
 		Enabled: exchange.FeaturesEnabled{
@@ -93,8 +93,8 @@ func (b *BTSE) SetDefaults() {
 	b.API.Endpoints.URLDefault = btseAPIURL
 	b.API.Endpoints.URL = b.API.Endpoints.URLDefault
 	b.WebsocketInit()
-	b.Websocket.Functionality = exchange.WebsocketOrderbookSupported |
-		exchange.WebsocketTickerSupported
+	b.Websocket.Functionality = exchange.WebsocketTickerSupported |
+		exchange.WebsocketOrderbookSupported
 }
 
 // Setup takes in the supplied exchange configuration details and sets params
@@ -128,7 +128,7 @@ func (b *BTSE) Start(wg *sync.WaitGroup) {
 // Run implements the BTSE wrapper
 func (b *BTSE) Run() {
 	if b.Verbose {
-		log.Debugf("%s Websocket: %s. (url: %s).\n", b.GetName(), common.IsEnabled(b.Websocket.IsEnabled()), b.Websocket.GetWebsocketURL())
+		log.Debugf("%s %d currencies enabled: %s.\n", b.GetName(), len(b.CurrencyPairs.Spot.Enabled), b.CurrencyPairs.Spot.Enabled)
 	}
 
 	if !b.GetEnabledFeatures().AutoPairUpdates {
@@ -137,7 +137,7 @@ func (b *BTSE) Run() {
 
 	err := b.UpdateTradablePairs(false)
 	if err != nil {
-		log.Printf("%s failed to update tradable pairs. Err: %s", b.Name, err)
+		log.Errorf("%s failed to update tradable pairs. Err: %s", b.Name, err)
 	}
 }
 

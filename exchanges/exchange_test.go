@@ -135,7 +135,7 @@ func TestSetAutoPairDefaults(t *testing.T) {
 		t.Fatalf("Test failed. TestSetAutoPairDefaults load config failed. Error %s", err)
 	}
 
-	if exch.Features.Supports.RESTCapabilities.AutoPairUpdates != false {
+	if exch.Features.Supports.RESTCapabilities.AutoPairUpdates {
 		t.Fatal("Test failed. TestSetAutoPairDefaults Incorrect value")
 	}
 }
@@ -320,54 +320,54 @@ func TestGetEnabledPairs(t *testing.T) {
 	b.CurrencyPairs.ConfigFormat = format
 
 	c := b.GetEnabledPairs(assetType)
-	if c[0].String() != "BTC-USD" {
-		t.Error("Test Failed - Exchange GetEnabledPairs() incorrect string")
+	if c[0].String() != defaultTestCurrencyPair {
+		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	format.Delimiter = "~"
 	b.CurrencyPairs.RequestFormat = format
 	c = b.GetEnabledPairs(assetType)
-	if c[0].String() != "BTC-USD" {
-		t.Error("Test Failed - Exchange GetEnabledPairs() incorrect string")
+	if c[0].String() != defaultTestCurrencyPair {
+		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	format.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat = format
 	c = b.GetEnabledPairs(assetType)
 	if c[0].String() != "BTCUSD" {
-		t.Error("Test Failed - Exchange GetEnabledPairs() incorrect string")
+		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Enabled = currency.NewPairsFromStrings([]string{"BTCDOGE"})
-	format.Index = "BTC"
+	format.Index = currency.BTC.String()
 	b.CurrencyPairs.ConfigFormat = format
 	c = b.GetEnabledPairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "DOGE" {
-		t.Error("Test Failed - Exchange GetEnabledPairs() incorrect string")
+	if c[0].Base != currency.BTC && c[0].Quote != currency.DOGE {
+		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Enabled = currency.NewPairsFromStrings([]string{"BTC_USD"})
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = "_"
 	c = b.GetEnabledPairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "USD" {
-		t.Error("Test Failed - Exchange GetEnabledPairs() incorrect string")
+	if c[0].Base != currency.BTC && c[0].Quote != currency.USD {
+		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Enabled = currency.NewPairsFromStrings([]string{"BTCDOGE"})
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = ""
-	b.CurrencyPairs.ConfigFormat.Index = "BTC"
+	b.CurrencyPairs.ConfigFormat.Index = currency.BTC.String()
 	c = b.GetEnabledPairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "DOGE" {
-		t.Error("Test Failed - Exchange GetEnabledPairs() incorrect string")
+	if c[0].Base != currency.BTC && c[0].Quote != currency.DOGE {
+		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Enabled = currency.NewPairsFromStrings([]string{"BTCUSD"})
 	b.CurrencyPairs.ConfigFormat.Index = ""
 	c = b.GetEnabledPairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "USD" {
-		t.Error("Test Failed - Exchange GetEnabledPairs() incorrect string")
+	if c[0].Base != currency.BTC && c[0].Quote != currency.USD {
+		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 }
 
@@ -376,7 +376,7 @@ func TestGetAvailablePairs(t *testing.T) {
 		Name: "TESTNAME",
 	}
 
-	b.CurrencyPairs.Spot.Available = currency.NewPairsFromStrings([]string{"BTC-USD"})
+	b.CurrencyPairs.Spot.Available = currency.NewPairsFromStrings([]string{defaultTestCurrencyPair})
 	format := config.CurrencyPairFormatConfig{
 		Delimiter: "-",
 		Index:     "",
@@ -388,14 +388,14 @@ func TestGetAvailablePairs(t *testing.T) {
 	b.CurrencyPairs.ConfigFormat = format
 
 	c := b.GetAvailablePairs(assetType)
-	if c[0].String() != "BTC-USD" {
+	if c[0].String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	format.Delimiter = "~"
 	b.CurrencyPairs.RequestFormat = format
 	c = b.GetAvailablePairs(assetType)
-	if c[0].String() != "BTC-USD" {
+	if c[0].String() != defaultTestCurrencyPair {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
@@ -407,10 +407,10 @@ func TestGetAvailablePairs(t *testing.T) {
 	}
 
 	b.CurrencyPairs.Spot.Available = currency.NewPairsFromStrings([]string{"BTCDOGE"})
-	format.Index = "BTC"
+	format.Index = currency.BTC.String()
 	b.CurrencyPairs.ConfigFormat = format
 	c = b.GetAvailablePairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "DOGE" {
+	if c[0].Base != currency.BTC && c[0].Quote != currency.DOGE {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
@@ -418,23 +418,23 @@ func TestGetAvailablePairs(t *testing.T) {
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = "_"
 	c = b.GetAvailablePairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "USD" {
+	if c[0].Base != currency.BTC && c[0].Quote != currency.USD {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Available = currency.NewPairsFromStrings([]string{"BTCDOGE"})
 	b.CurrencyPairs.RequestFormat.Delimiter = ""
 	b.CurrencyPairs.ConfigFormat.Delimiter = ""
-	b.CurrencyPairs.ConfigFormat.Index = "BTC"
+	b.CurrencyPairs.ConfigFormat.Index = currency.BTC.String()
 	c = b.GetAvailablePairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "DOGE" {
+	if c[0].Base != currency.BTC && c[0].Quote != currency.DOGE {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 
 	b.CurrencyPairs.Spot.Available = currency.NewPairsFromStrings([]string{"BTCUSD"})
 	b.CurrencyPairs.ConfigFormat.Index = ""
 	c = b.GetAvailablePairs(assetType)
-	if c[0].Base.String() != "BTC" && c[0].Quote.String() != "USD" {
+	if c[0].Base != currency.BTC && c[0].Quote != currency.USD {
 		t.Error("Test Failed - Exchange GetAvailablePairs() incorrect string")
 	}
 }

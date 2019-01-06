@@ -113,7 +113,7 @@ func (b *BTCMarkets) GetTrades(firstPair, secondPair string, values url.Values) 
 // orderside - example "Bid" or "Ask"
 // orderType - example "limit"
 // clientReq - example "abc-cdf-1000"
-func (b *BTCMarkets) NewOrder(currency, instrument string, price, amount float64, orderSide, orderType, clientReq string) (int64, error) {
+func (b *BTCMarkets) NewOrder(instrument, currency string, price, amount float64, orderSide, orderType, clientReq string) (int64, error) {
 	newPrice := int64(price * float64(common.SatoshisPerBTC))
 	newVolume := int64(amount * float64(common.SatoshisPerBTC))
 
@@ -373,11 +373,7 @@ func (b *BTCMarkets) SendAuthenticatedRequest(reqType, path string, data, result
 			b.Name)
 	}
 
-	if b.Nonce.Get() == 0 {
-		b.Nonce.Set(time.Now().UnixNano())
-	} else {
-		b.Nonce.Inc()
-	}
+	b.Nonce.Set(time.Now().UnixNano())
 	var req string
 	payload := []byte("")
 

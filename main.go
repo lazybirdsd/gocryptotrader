@@ -21,7 +21,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//Handle flags
+	// Handle flags
 	var settings engine.Settings
 	versionFlag := flag.Bool("version", false, "retrieves current GoCryptoTrader version")
 
@@ -33,8 +33,10 @@ func main() {
 	flag.BoolVar(&settings.EnableAllExchanges, "enableallexchanges", false, "enables all exchanges")
 	flag.BoolVar(&settings.EnableAllPairs, "enableallpairs", false, "enables all pairs for enabled exchanges")
 	flag.BoolVar(&settings.EnablePortfolioWatcher, "portfoliowatcher", true, "enables the portfolio watcher")
-	flag.BoolVar(&settings.EnableWebsocketServer, "websocketserver", true, "enables the websocket server")
-	flag.BoolVar(&settings.EnableRESTServer, "restserver", true, "enables the RESTful server")
+	flag.BoolVar(&settings.EnableGRPC, "grpc", true, "enables the grpc server")
+	flag.BoolVar(&settings.EnableGRPCProxy, "grpcproxy", true, "enables the grpc proxy server")
+	flag.BoolVar(&settings.EnableWebsocketRPC, "websocketrpc", true, "enables the websocket RPC server")
+	flag.BoolVar(&settings.EnableDeprecatedRPC, "deprecatedrpc", true, "enables the deprecated RPC server")
 	flag.BoolVar(&settings.EnableCommsRelayer, "enablecommsrelayer", true, "enables available communications relayer")
 	flag.BoolVar(&settings.Verbose, "verbose", false, "increases logging verbosity for GoCryptoTrader")
 	flag.BoolVar(&settings.EnableTickerRoutine, "tickerroutine", true, "enables the ticker routine for all loaded exchanges")
@@ -72,7 +74,7 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Printf(core.Version(true))
+		fmt.Print(core.Version(true))
 		os.Exit(0)
 	}
 

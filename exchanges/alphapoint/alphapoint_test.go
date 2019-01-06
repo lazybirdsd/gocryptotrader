@@ -526,10 +526,7 @@ func TestGetOrderHistory(t *testing.T) {
 // ----------------------------------------------------------------------------------------------------------------------------
 
 func areTestAPIKeysSet(a *Alphapoint) bool {
-	if a.ValidateAPICredentials() {
-		return true
-	}
-	return false
+	return a.ValidateAPICredentials()
 }
 
 func TestSubmitOrder(t *testing.T) {

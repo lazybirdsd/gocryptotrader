@@ -30,23 +30,23 @@ package events
 // 	testSetup(t)
 //
 // 	pair := currency.NewPairFromStrings("BTC", "USD")
-// 	eventID, err := AddEvent("ANX", "price", ">,==", pair, "SPOT", actionTest)
+// 	eventID, err := AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil && eventID != 0 {
 // 		t.Errorf("Test Failed. AddEvent: Error, %s", err)
 // 	}
-// 	eventID, err = AddEvent("ANXX", "price", ">,==", pair, "SPOT", actionTest)
+// 	eventID, err = AddEvent("ANXX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err == nil && eventID == 0 {
 // 		t.Error("Test Failed. AddEvent: Error, error not captured in Exchange")
 // 	}
-// 	eventID, err = AddEvent("ANX", "prices", ">,==", pair, "SPOT", actionTest)
+// 	eventID, err = AddEvent("ANX", "prices", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err == nil && eventID == 0 {
 // 		t.Error("Test Failed. AddEvent: Error, error not captured in Item")
 // 	}
-// 	eventID, err = AddEvent("ANX", "price", "3===D", pair, "SPOT", actionTest)
+// 	eventID, err = AddEvent("ANX", "price", "3===D", pair, assets.AssetTypeSpot, actionTest)
 // 	if err == nil && eventID == 0 {
 // 		t.Error("Test Failed. AddEvent: Error, error not captured in Condition")
 // 	}
-// 	eventID, err = AddEvent("ANX", "price", ">,==", pair, "SPOT", "console_prints")
+// 	eventID, err = AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, "console_prints")
 // 	if err == nil && eventID == 0 {
 // 		t.Error("Test Failed. AddEvent: Error, error not captured in Action")
 // 	}
@@ -60,7 +60,7 @@ package events
 // 	testSetup(t)
 //
 // 	pair := currency.NewPairFromStrings("BTC", "USD")
-// 	eventID, err := AddEvent("ANX", "price", ">,==", pair, "SPOT", actionTest)
+// 	eventID, err := AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil && eventID != 0 {
 // 		t.Errorf("Test Failed. RemoveEvent: Error, %s", err)
 // 	}
@@ -76,15 +76,15 @@ package events
 // 	testSetup(t)
 //
 // 	pair := currency.NewPairFromStrings("BTC", "USD")
-// 	one, err := AddEvent("ANX", "price", ">,==", pair, "SPOT", actionTest)
+// 	one, err := AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil {
 // 		t.Errorf("Test Failed. GetEventCounter: Error, %s", err)
 // 	}
-// 	two, err := AddEvent("ANX", "price", ">,==", pair, "SPOT", actionTest)
+// 	two, err := AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil {
 // 		t.Errorf("Test Failed. GetEventCounter: Error, %s", err)
 // 	}
-// 	three, err := AddEvent("ANX", "price", ">,==", pair, "SPOT", actionTest)
+// 	three, err := AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil {
 // 		t.Errorf("Test Failed. GetEventCounter: Error, %s", err)
 // 	}
@@ -115,7 +115,7 @@ package events
 // 	testSetup(t)
 //
 // 	pair := currency.NewPairFromStrings("BTC", "USD")
-// 	one, err := AddEvent("ANX", "price", ">,==", pair, "SPOT", actionTest)
+// 	one, err := AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil {
 // 		t.Fatalf("Test Failed. ExecuteAction: Error, %s", err)
 // 	}
@@ -128,7 +128,7 @@ package events
 // 	}
 //
 // 	action := actionSMSNotify + "," + "ALL"
-// 	one, err = AddEvent("ANX", "price", ">,==", pair, "SPOT", action)
+// 	one, err = AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, action)
 // 	if err != nil {
 // 		t.Fatalf("Test Failed. ExecuteAction: Error, %s", err)
 // 	}
@@ -142,7 +142,7 @@ package events
 // 	}
 //
 // 	action = actionSMSNotify + "," + "StyleGherkin"
-// 	one, err = AddEvent("ANX", "price", ">,==", pair, "SPOT", action)
+// 	one, err = AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, action)
 // 	if err != nil {
 // 		t.Fatalf("Test Failed. ExecuteAction: Error, %s", err)
 // 	}
@@ -161,7 +161,7 @@ package events
 // 	testSetup(t)
 //
 // 	pair := currency.NewPairFromStrings("BTC", "USD")
-// 	one, err := AddEvent("ANX", "price", ">,==", pair, "SPOT", actionTest)
+// 	one, err := AddEvent("ANX", "price", ">,==", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil {
 // 		t.Errorf("Test Failed. EventToString: Error, %s", err)
 // 	}
@@ -181,7 +181,7 @@ package events
 //
 // 	// Test invalid currency pair
 // 	newPair := currency.NewPairFromStrings("A", "B")
-// 	one, err := AddEvent("ANX", "price", ">=,10", newPair, "SPOT", actionTest)
+// 	one, err := AddEvent("ANX", "price", ">=,10", newPair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil {
 // 		t.Errorf("Test Failed. CheckCondition: Error, %s", err)
 // 	}
@@ -288,7 +288,7 @@ package events
 // 	testSetup(t)
 //
 // 	pair := currency.NewPairFromStrings("BTC", "USD")
-// 	_, err := AddEvent("ANX", "price", ">=,10", pair, "SPOT", actionTest)
+// 	_, err := AddEvent("ANX", "price", ">=,10", pair, assets.AssetTypeSpot, actionTest)
 // 	if err != nil {
 // 		t.Fatal("Test failed. TestChcheckEvents add event")
 // 	}

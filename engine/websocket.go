@@ -4,12 +4,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/thrasher-/gocryptotrader/exchanges/assets"
-
 	"github.com/gorilla/websocket"
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/config"
 	"github.com/thrasher-/gocryptotrader/currency"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 	log "github.com/thrasher-/gocryptotrader/logger"
 )
 
@@ -212,7 +211,7 @@ func WebsocketClientHandler(w http.ResponseWriter, r *http.Request) {
 		StartWebsocketHandler()
 	}
 
-	connectionLimit := Bot.Config.Webserver.WebsocketConnectionLimit
+	connectionLimit := Bot.Config.RemoteControl.WebsocketRPC.ConnectionLimit
 	numClients := len(wsHub.Clients)
 
 	if numClients >= connectionLimit {
@@ -229,7 +228,7 @@ func WebsocketClientHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Allow insecure origin if the Origin request header is present and not
 	// equal to the Host request header. Default to false
-	if Bot.Config.Webserver.WebsocketAllowInsecureOrigin {
+	if Bot.Config.RemoteControl.WebsocketRPC.AllowInsecureOrigin {
 		upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	}
 
@@ -261,8 +260,8 @@ func wsAuth(client *WebsocketClient, data interface{}) error {
 		return err
 	}
 
-	hashPW := common.HexEncodeToString(common.GetSHA256([]byte(Bot.Config.Webserver.AdminPassword)))
-	if auth.Username == Bot.Config.Webserver.AdminUsername && auth.Password == hashPW {
+	hashPW := common.HexEncodeToString(common.GetSHA256([]byte(Bot.Config.RemoteControl.Password)))
+	if auth.Username == Bot.Config.RemoteControl.Username && auth.Password == hashPW {
 		client.Authenticated = true
 		wsResp.Data = WebsocketResponseSuccess
 		log.Debugf("websocket: client authenticated successfully")
@@ -272,15 +271,15 @@ func wsAuth(client *WebsocketClient, data interface{}) error {
 	wsResp.Error = "invalid username/password"
 	client.authFailures++
 	client.SendWebsocketMessage(wsResp)
-	if client.authFailures >= Bot.Config.Webserver.WebsocketMaxAuthFailures {
+	if client.authFailures >= Bot.Config.RemoteControl.WebsocketRPC.MaxAuthFailures {
 		log.Debugf("websocket: disconnecting client, maximum auth failures threshold reached (failures: %d limit: %d)",
-			client.authFailures, Bot.Config.Webserver.WebsocketMaxAuthFailures)
+			client.authFailures, Bot.Config.RemoteControl.WebsocketRPC.MaxAuthFailures)
 		wsHub.Unregister <- client
 		return nil
 	}
 
 	log.Debugf("websocket: client sent wrong username/password (failures: %d limit: %d)",
-		client.authFailures, Bot.Config.Webserver.WebsocketMaxAuthFailures)
+		client.authFailures, Bot.Config.RemoteControl.WebsocketRPC.MaxAuthFailures)
 	return nil
 }
 
@@ -345,7 +344,7 @@ func wsGetTicker(client *WebsocketClient, data interface{}) error {
 		return err
 	}
 
-	result, err := GetSpecificTicker(tickerReq.Currency,
+	result, err := GetSpecificTicker(currency.NewPairFromString(tickerReq.Currency),
 		tickerReq.Exchange, assets.AssetType(tickerReq.AssetType))
 
 	if err != nil {
@@ -377,7 +376,7 @@ func wsGetOrderbook(client *WebsocketClient, data interface{}) error {
 		return err
 	}
 
-	result, err := GetSpecificOrderbook(orderbookReq.Currency,
+	result, err := GetSpecificOrderbook(currency.NewPairFromString(orderbookReq.Currency),
 		orderbookReq.Exchange, assets.AssetType(orderbookReq.AssetType))
 
 	if err != nil {

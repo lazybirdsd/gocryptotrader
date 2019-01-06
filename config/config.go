@@ -30,7 +30,7 @@ const (
 	configFileEncryptionEnabled            = 1
 	configFileEncryptionDisabled           = -1
 	configPairsLastUpdatedWarningThreshold = 30 // 30 days
-	configDefaultHTTPTimeout               = time.Duration(time.Second * 15)
+	configDefaultHTTPTimeout               = time.Second * 15
 	configMaxAuthFailures                  = 3
 
 	DefaultAPIKey      = "Key"
@@ -202,24 +202,25 @@ func (c *Config) PurgeExchangeAPICredentials() {
 	m.Lock()
 	defer m.Unlock()
 	for x := range c.Exchanges {
-		if c.Exchanges[x].API.AuthenticatedSupport {
-			c.Exchanges[x].API.AuthenticatedSupport = false
-
-			if c.Exchanges[x].API.CredentialsValidator.RequiresKey {
-				c.Exchanges[x].API.Credentials.Key = DefaultAPIKey
-			}
-
-			if c.Exchanges[x].API.CredentialsValidator.RequiresSecret {
-				c.Exchanges[x].API.Credentials.Secret = DefaultAPISecret
-			}
-
-			if c.Exchanges[x].API.CredentialsValidator.RequiresClientID {
-				c.Exchanges[x].API.Credentials.ClientID = DefaultAPIClientID
-			}
-
-			c.Exchanges[x].API.Credentials.PEMKey = ""
-			c.Exchanges[x].API.Credentials.OTPSecret = ""
+		if !c.Exchanges[x].API.AuthenticatedSupport {
+			continue
 		}
+		c.Exchanges[x].API.AuthenticatedSupport = false
+
+		if c.Exchanges[x].API.CredentialsValidator.RequiresKey {
+			c.Exchanges[x].API.Credentials.Key = DefaultAPIKey
+		}
+
+		if c.Exchanges[x].API.CredentialsValidator.RequiresSecret {
+			c.Exchanges[x].API.Credentials.Secret = DefaultAPISecret
+		}
+
+		if c.Exchanges[x].API.CredentialsValidator.RequiresClientID {
+			c.Exchanges[x].API.Credentials.ClientID = DefaultAPIClientID
+		}
+
+		c.Exchanges[x].API.Credentials.PEMKey = ""
+		c.Exchanges[x].API.Credentials.OTPSecret = ""
 	}
 }
 
@@ -474,12 +475,13 @@ func (c *Config) CheckPairConfigFormats(exchName string) error {
 	}
 
 	for x := range assetTypes {
-		pairFmt, err := c.GetPairFormat(exchName, assetTypes[x])
+		assetType := assetTypes[x]
+		pairFmt, err := c.GetPairFormat(exchName, assetType)
 		if err != nil {
 			return err
 		}
 
-		pairs, err := c.GetCurrencyPairConfig(exchName, assetTypes[x])
+		pairs, err := c.GetCurrencyPairConfig(exchName, assetType)
 		if err != nil {
 			return err
 		}
@@ -503,13 +505,13 @@ func (c *Config) CheckPairConfigFormats(exchName string) error {
 			for y := range loadedPairs {
 				if pairFmt.Delimiter != "" {
 					if !common.StringContains(loadedPairs[y].String(), pairFmt.Delimiter) {
-						return fmt.Errorf("exchange %s %s %v pairs does not contain delimiter", exchName, pairsType, assetTypes[x])
+						return fmt.Errorf("exchange %s %s %v pairs does not contain delimiter", exchName, pairsType, assetType)
 					}
 				}
 
 				if pairFmt.Index != "" {
 					if !common.StringContains(loadedPairs[y].String(), pairFmt.Index) {
-						return fmt.Errorf("exchange %s %s %v pairs does not contain index", exchName, pairsType, assetTypes[x])
+						return fmt.Errorf("exchange %s %s %v pairs does not contain index", exchName, pairsType, assetType)
 					}
 				}
 			}
@@ -586,7 +588,7 @@ func (c *Config) CheckPairConsistency(exchName string) error {
 			if err != nil {
 				return fmt.Errorf("exchange %s failed to set pairs: %v", exchName, err)
 			}
-			log.Printf("Exchange %s: No enabled pairs found in available pairs, randomly added %v pair.\n", exchName, newPair)
+			log.Warnf("Exchange %s: No enabled pairs found in available pairs, randomly added %v pair.\n", exchName, newPair)
 			continue
 		} else {
 			err = c.SetPairs(exchName, assetTypes[x], true, pairs)
@@ -594,7 +596,7 @@ func (c *Config) CheckPairConsistency(exchName string) error {
 				return fmt.Errorf("exchange %s failed to set pairs: %v", exchName, err)
 			}
 		}
-		log.Debugf("Exchange %s: Removing enabled pair(s) %v from enabled pairs as it isn't an available pair.", exchName, pairsRemoved.Strings())
+		log.Warnf("Exchange %s: Removing enabled pair(s) %v from enabled pairs as it isn't an available pair.", exchName, pairsRemoved.Strings())
 	}
 	return nil
 }
@@ -932,22 +934,22 @@ func (c *Config) CheckExchangeConfigValues() error {
 
 			if exch.HTTPRateLimiter != nil {
 				if exch.HTTPRateLimiter.Authenticated.Duration < 0 {
-					log.Printf("Exchange %s HTTP Rate Limiter authenticated duration set to negative value, defaulting to 0", exch.Name)
+					log.Warnf("Exchange %s HTTP Rate Limiter authenticated duration set to negative value, defaulting to 0", exch.Name)
 					c.Exchanges[i].HTTPRateLimiter.Authenticated.Duration = 0
 				}
 
 				if exch.HTTPRateLimiter.Authenticated.Rate < 0 {
-					log.Printf("Exchange %s HTTP Rate Limiter authenticated rate set to negative value, defaulting to 0", exch.Name)
+					log.Warnf("Exchange %s HTTP Rate Limiter authenticated rate set to negative value, defaulting to 0", exch.Name)
 					c.Exchanges[i].HTTPRateLimiter.Authenticated.Rate = 0
 				}
 
 				if exch.HTTPRateLimiter.Unauthenticated.Duration < 0 {
-					log.Printf("Exchange %s HTTP Rate Limiter unauthenticated duration set to negative value, defaulting to 0", exch.Name)
+					log.Warnf("Exchange %s HTTP Rate Limiter unauthenticated duration set to negative value, defaulting to 0", exch.Name)
 					c.Exchanges[i].HTTPRateLimiter.Unauthenticated.Duration = 0
 				}
 
 				if exch.HTTPRateLimiter.Unauthenticated.Rate < 0 {
-					log.Printf("Exchange %s HTTP Rate Limiter unauthenticated rate set to negative value, defaulting to 0", exch.Name)
+					log.Warnf("Exchange %s HTTP Rate Limiter unauthenticated rate set to negative value, defaulting to 0", exch.Name)
 					c.Exchanges[i].HTTPRateLimiter.Unauthenticated.Rate = 0
 				}
 			}
@@ -961,36 +963,37 @@ func (c *Config) CheckExchangeConfigValues() error {
 
 			if len(exch.BankAccounts) > 0 {
 				for x := range exch.BankAccounts {
-					if exch.BankAccounts[x].Enabled == true {
-						bankError := false
-						if exch.BankAccounts[x].BankName == "" || exch.BankAccounts[x].BankAddress == "" {
-							log.Printf("banking details for %s is enabled but variables not set",
-								exch.Name)
-							bankError = true
-						}
+					if !exch.BankAccounts[x].Enabled {
+						continue
+					}
+					bankError := false
+					if exch.BankAccounts[x].BankName == "" || exch.BankAccounts[x].BankAddress == "" {
+						log.Warnf("banking details for %s is enabled but variables not set",
+							exch.Name)
+						bankError = true
+					}
 
-						if exch.BankAccounts[x].AccountName == "" || exch.BankAccounts[x].AccountNumber == "" {
-							log.Printf("banking account details for %s variables not set",
-								exch.Name)
-							bankError = true
-						}
+					if exch.BankAccounts[x].AccountName == "" || exch.BankAccounts[x].AccountNumber == "" {
+						log.Warnf("banking account details for %s variables not set",
+							exch.Name)
+						bankError = true
+					}
 
-						if exch.BankAccounts[x].SupportedCurrencies == "" {
-							log.Printf("banking account details for %s acceptable funding currencies not set",
-								exch.Name)
-							bankError = true
-						}
+					if exch.BankAccounts[x].SupportedCurrencies == "" {
+						log.Warnf("banking account details for %s acceptable funding currencies not set",
+							exch.Name)
+						bankError = true
+					}
 
-						if exch.BankAccounts[x].BSBNumber == "" && exch.BankAccounts[x].IBAN == "" &&
-							exch.BankAccounts[x].SWIFTCode == "" {
-							log.Printf("banking account details for %s critical banking numbers not set",
-								exch.Name)
-							bankError = true
-						}
+					if exch.BankAccounts[x].BSBNumber == "" && exch.BankAccounts[x].IBAN == "" &&
+						exch.BankAccounts[x].SWIFTCode == "" {
+						log.Warnf("banking account details for %s critical banking numbers not set",
+							exch.Name)
+						bankError = true
+					}
 
-						if bankError {
-							exch.BankAccounts[x].Enabled = false
-						}
+					if bankError {
+						exch.BankAccounts[x].Enabled = false
 					}
 				}
 			}
@@ -1000,68 +1003,6 @@ func (c *Config) CheckExchangeConfigValues() error {
 	if exchanges == 0 {
 		return errors.New(ErrNoEnabledExchanges)
 	}
-	return nil
-}
-
-// CheckRESTServerConfigValues checks information before the REST server starts
-// and returns an error if values are incorrect
-func (c *Config) CheckRESTServerConfigValues() error {
-	if c.RESTServer.AdminUsername == "" || c.RESTServer.AdminPassword == "" {
-		return errors.New(WarningWebserverCredentialValuesEmpty)
-	}
-
-	if !common.StringContains(c.RESTServer.ListenAddress, ":") {
-		return errors.New(WarningWebserverListenAddressInvalid)
-	}
-
-	portStr := common.SplitStrings(c.RESTServer.ListenAddress, ":")[1]
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return errors.New(WarningWebserverListenAddressInvalid)
-	}
-
-	if port < 1 || port > 65355 {
-		return errors.New(WarningWebserverListenAddressInvalid)
-	}
-
-	return nil
-}
-
-// CheckWebsocketServerConfigValues checks information before the websocket server
-// starts and returns an error if values are incorrect
-func (c *Config) CheckWebsocketServerConfigValues() error {
-	if c.WebsocketServer.AdminUsername == "" || c.WebsocketServer.AdminPassword == "" {
-		return errors.New(WarningWebserverCredentialValuesEmpty)
-	}
-
-	if !common.StringContains(c.WebsocketServer.ListenAddress, ":") {
-		return errors.New(WarningWebserverListenAddressInvalid)
-	}
-
-	portStr := common.SplitStrings(c.WebsocketServer.ListenAddress, ":")[1]
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return errors.New(WarningWebserverListenAddressInvalid)
-	}
-
-	if port < 1 || port > 65355 {
-		return errors.New(WarningWebserverListenAddressInvalid)
-	}
-
-	if c.RESTServer.Enabled && c.RESTServer.ListenAddress == c.WebsocketServer.ListenAddress {
-		port++
-		log.Printf("Config: Updating Websocket server port to %v prevent duplicate listen port", port)
-		c.WebsocketServer.ListenAddress = common.ExtractHost(c.WebsocketServer.ListenAddress) + ":" + strconv.Itoa(port)
-	}
-
-	if c.WebsocketServer.WebsocketConnectionLimit <= 0 {
-		c.WebsocketServer.WebsocketConnectionLimit = 1
-	}
-
-	if c.WebsocketServer.WebsocketMaxAuthFailures <= 0 {
-		c.WebsocketServer.WebsocketMaxAuthFailures = 3
-	}
-
 	return nil
 }
 
@@ -1251,7 +1192,6 @@ func (c *Config) CheckLoggerConfig() error {
 		log.Warn("Missing or invalid config settings using safe defaults")
 
 		// Set logger to safe defaults
-
 		c.Logging = log.Logging{
 			Enabled:      t,
 			Level:        "DEBUG|INFO|WARN|ERROR|FATAL",
@@ -1471,43 +1411,39 @@ func (c *Config) CheckConfig() error {
 	c.CheckCommunicationsConfig()
 
 	if c.Webserver != nil {
-		// Migrate to new settings for REST and Websocket
-		c.RESTServer.AdminUsername = c.Webserver.AdminUsername
-		c.RESTServer.AdminPassword = c.Webserver.AdminPassword
-		c.RESTServer.Enabled = c.Webserver.Enabled
-		c.RESTServer.ListenAddress = c.Webserver.ListenAddress
-
-		c.WebsocketServer.AdminUsername = c.RESTServer.AdminUsername
-		c.WebsocketServer.AdminPassword = c.RESTServer.AdminPassword
-		c.WebsocketServer.Enabled = c.RESTServer.Enabled
-		c.WebsocketServer.WebsocketConnectionLimit = c.Webserver.WebsocketConnectionLimit
-		c.WebsocketServer.WebsocketMaxAuthFailures = c.Webserver.WebsocketMaxAuthFailures
-		c.WebsocketServer.WebsocketAllowInsecureOrigin = c.Webserver.WebsocketAllowInsecureOrigin
-
-		// Set listen address and ensure that we don't use a duplicate port
 		port := common.ExtractPort(c.Webserver.ListenAddress)
+		host := common.ExtractHost(c.Webserver.ListenAddress)
+
+		c.RemoteControl = RemoteControlConfig{
+			Username: c.Webserver.AdminUsername,
+			Password: c.Webserver.AdminPassword,
+
+			DeprecatedRPC: DepcrecatedRPCConfig{
+				Enabled:       c.Webserver.Enabled,
+				ListenAddress: host + ":" + strconv.Itoa(port),
+			},
+		}
+
 		port++
-		newHost := common.SplitStrings(c.Webserver.ListenAddress, ":")[0] + ":" + strconv.Itoa(port)
-		c.WebsocketServer.ListenAddress = newHost
+		c.RemoteControl.WebsocketRPC = WebsocketRPCConfig{
+			Enabled:             c.Webserver.Enabled,
+			ListenAddress:       host + ":" + strconv.Itoa(port),
+			ConnectionLimit:     c.Webserver.WebsocketConnectionLimit,
+			MaxAuthFailures:     c.Webserver.WebsocketMaxAuthFailures,
+			AllowInsecureOrigin: c.Webserver.WebsocketAllowInsecureOrigin,
+		}
+
+		port++
+		gRPCProxyPort := port + 1
+		c.RemoteControl.GRPC = GRPCConfig{
+			Enabled:                c.Webserver.Enabled,
+			ListenAddress:          host + ":" + strconv.Itoa(port),
+			GRPCProxyEnabled:       c.Webserver.Enabled,
+			GRPCProxyListenAddress: host + ":" + strconv.Itoa(gRPCProxyPort),
+		}
 
 		// Then flush the old webserver settings
 		c.Webserver = nil
-	}
-
-	if c.RESTServer.Enabled {
-		err = c.CheckRESTServerConfigValues()
-		if err != nil {
-			log.Print(fmt.Errorf(ErrCheckingConfigValues, err))
-			c.RESTServer.Enabled = false
-		}
-	}
-
-	if c.WebsocketServer.Enabled {
-		err = c.CheckWebsocketServerConfigValues()
-		if err != nil {
-			log.Warnf(ErrCheckingConfigValues, err)
-			c.WebsocketServer.Enabled = false
-		}
 	}
 
 	err = c.CheckCurrencyConfigValues()

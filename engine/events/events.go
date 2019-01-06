@@ -31,7 +31,7 @@ const (
 	ActionConsolePrint = "CONSOLE_PRINT"
 	ActionTest         = "ACTION_TEST"
 
-	defaultSleepDelay = time.Duration(time.Millisecond * 500)
+	defaultSleepDelay = time.Millisecond * 500
 	defaultVerbose    = true
 )
 
@@ -61,7 +61,7 @@ type ConditionParams struct {
 
 // Event struct holds the event variables
 type Event struct {
-	ID        int
+	ID        int64
 	Exchange  string
 	Item      string
 	Condition ConditionParams
@@ -83,7 +83,7 @@ func SetComms(commsP *communications.Communications) {
 
 // Add adds an event to the Events chain and returns an index/eventID
 // and an error
-func Add(exchange, item string, condition ConditionParams, currencyPair currency.Pair, asset assets.AssetType, action string) (int, error) {
+func Add(exchange, item string, condition ConditionParams, currencyPair currency.Pair, asset assets.AssetType, action string) (int64, error) {
 	err := IsValidEvent(exchange, item, condition, action)
 	if err != nil {
 		return 0, err
@@ -94,7 +94,7 @@ func Add(exchange, item string, condition ConditionParams, currencyPair currency
 	if len(Events) == 0 {
 		evt.ID = 0
 	} else {
-		evt.ID = len(Events) + 1
+		evt.ID = int64(len(Events) + 1)
 	}
 
 	evt.Exchange = exchange
@@ -109,7 +109,7 @@ func Add(exchange, item string, condition ConditionParams, currencyPair currency
 }
 
 // Remove deletes and event by its ID
-func Remove(eventID int) bool {
+func Remove(eventID int64) bool {
 	for i, x := range Events {
 		if x.ID == eventID {
 			Events = append(Events[:i], Events[i+1:]...)
@@ -162,7 +162,7 @@ func (e *Event) processTicker() bool {
 	t, err := ticker.GetTicker(e.Exchange, e.Pair, e.Asset)
 	if err != nil {
 		if Verbose {
-			log.Printf("Events: failed to get ticker. Err: %s", err)
+			log.Debugf("Events: failed to get ticker. Err: %s", err)
 		}
 		return false
 	}
@@ -171,7 +171,7 @@ func (e *Event) processTicker() bool {
 
 	if lastPrice == 0 {
 		if Verbose {
-			log.Printf("Events: ticker last price is 0")
+			log.Debugln("Events: ticker last price is 0")
 		}
 		return false
 	}
@@ -182,34 +182,24 @@ func (e *Event) processTicker() bool {
 func (e *Event) processCondition(actual, threshold float64) bool {
 	switch e.Condition.Condition {
 	case ConditionGreaterThan:
-		{
-			if actual > threshold {
-				return e.ExecuteAction()
-			}
+		if actual > threshold {
+			return e.ExecuteAction()
 		}
 	case ConditionGreaterThanOrEqual:
-		{
-			if actual >= threshold {
-				return e.ExecuteAction()
-			}
+		if actual >= threshold {
+			return e.ExecuteAction()
 		}
 	case ConditionLessThan:
-		{
-			if actual < threshold {
-				return e.ExecuteAction()
-			}
+		if actual < threshold {
+			return e.ExecuteAction()
 		}
 	case ConditionLessThanOrEqual:
-		{
-			if actual <= threshold {
-				return e.ExecuteAction()
-			}
+		if actual <= threshold {
+			return e.ExecuteAction()
 		}
 	case ConditionIsEqual:
-		{
-			if actual == threshold {
-				return e.ExecuteAction()
-			}
+		if actual == threshold {
+			return e.ExecuteAction()
 		}
 	}
 	return false
@@ -219,7 +209,7 @@ func (e *Event) processOrderbook() bool {
 	ob, err := orderbook.Get(e.Exchange, e.Pair, e.Asset)
 	if err != nil {
 		if Verbose {
-			log.Printf("Events: Failed to get orderbook. Err: %s", err)
+			log.Debugf("Events: Failed to get orderbook. Err: %s", err)
 		}
 		return false
 	}
@@ -231,7 +221,7 @@ func (e *Event) processOrderbook() bool {
 			result := e.processCondition(subtotal, e.Condition.OrderbookAmount)
 			if result {
 				success = true
-				log.Printf("Events: Bid Amount: %f Price: %v Subtotal: %v", ob.Bids[x].Amount, ob.Bids[x].Price, subtotal)
+				log.Debugf("Events: Bid Amount: %f Price: %v Subtotal: %v", ob.Bids[x].Amount, ob.Bids[x].Price, subtotal)
 			}
 		}
 	}
@@ -242,7 +232,7 @@ func (e *Event) processOrderbook() bool {
 			result := e.processCondition(subtotal, e.Condition.OrderbookAmount)
 			if result {
 				success = true
-				log.Printf("Events: Ask Amount: %f Price: %v Subtotal: %v", ob.Asks[x].Amount, ob.Asks[x].Price, subtotal)
+				log.Debugf("Events: Ask Amount: %f Price: %v Subtotal: %v", ob.Asks[x].Amount, ob.Asks[x].Price, subtotal)
 			}
 		}
 	}
@@ -309,7 +299,7 @@ func IsValidEvent(exchange, item string, condition ConditionParams, action strin
 // EventManger is the overarching routine that will iterate through the Events
 // chain
 func EventManger() {
-	log.Printf("EventManager started. SleepDelay: %v", SleepDelay.String())
+	log.Debugf("EventManager started. SleepDelay: %v", SleepDelay.String())
 
 	for {
 		total, executed := GetEventCounter()
@@ -317,11 +307,11 @@ func EventManger() {
 			for _, event := range Events {
 				if !event.Executed {
 					if Verbose {
-						log.Printf("Events: Processing event %s.", event.String())
+						log.Debugf("Events: Processing event %s.", event.String())
 					}
 					success := event.CheckCondition()
 					if success {
-						log.Printf(
+						log.Debugf(
 							"Events: ID: %d triggered on %s successfully.\n", event.ID,
 							event.Exchange,
 						)

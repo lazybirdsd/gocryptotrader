@@ -11,12 +11,14 @@ type Settings struct {
 
 	// Core Settings
 	EnableDryRun                bool
-	EnableCoinmarketcapAnalysis bool
 	EnableAllExchanges          bool
 	EnableAllPairs              bool
+	EnableCoinmarketcapAnalysis bool
 	EnablePortfolioWatcher      bool
-	EnableWebsocketServer       bool
-	EnableRESTServer            bool
+	EnableGRPC                  bool
+	EnableGRPCProxy             bool
+	EnableWebsocketRPC          bool
+	EnableDeprecatedRPC         bool
 	EnableTickerRoutine         bool
 	EnableOrderbookRoutine      bool
 	EnableWebsocketRoutine      bool

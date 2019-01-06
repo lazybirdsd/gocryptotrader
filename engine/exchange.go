@@ -3,7 +3,6 @@ package engine
 import (
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/thrasher-/gocryptotrader/common"
 	exchange "github.com/thrasher-/gocryptotrader/exchanges"
@@ -247,7 +246,7 @@ func LoadExchange(name string, useWG bool, wg *sync.WaitGroup) error {
 		exchCfg.ProxyAddress = Bot.Settings.ExchangeHTTPProxy
 	}
 
-	if Bot.Settings.ExchangeHTTPTimeout != time.Duration(time.Second*15) {
+	if Bot.Settings.ExchangeHTTPTimeout != exchange.DefaultHTTPTimeout {
 		exchCfg.HTTPTimeout = Bot.Settings.ExchangeHTTPTimeout
 	}
 

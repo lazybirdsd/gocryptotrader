@@ -14,8 +14,6 @@ const (
 	ErrOrderbookForExchangeNotFound = "ticker for exchange does not exist"
 	ErrPrimaryCurrencyNotFound      = "primary currency for orderbook not found"
 	ErrSecondaryCurrencyNotFound    = "secondary currency for orderbook not found"
-
-	Spot = "SPOT"
 )
 
 // Vars for the orderbook package

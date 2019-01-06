@@ -108,7 +108,7 @@ func (a *ANX) SetDefaults() {
 	a.API.Endpoints.URL = a.API.Endpoints.URLDefault
 }
 
-//Setup is run on startup to setup exchange with config values
+// Setup is run on startup to setup exchange with config values
 func (a *ANX) Setup(exch *config.ExchangeConfig) error {
 	if !exch.Enabled {
 		a.SetEnabled(false)

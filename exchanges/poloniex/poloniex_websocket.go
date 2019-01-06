@@ -178,6 +178,14 @@ func (p *Poloniex) WsHandleData() {
 			case wsTickerDataID:
 				tickerData := data[2].([]interface{})
 				var t WsTicker
+				currencyPairNum := tickerData[0].(float64)
+				var currencyPair currency.Pair
+				cp, ok := CurrencyPairID[int(currencyPairNum)]
+				if ok {
+					currencyPair = currency.NewPairDelimiter(cp, "_")
+
+				}
+
 				t.LastPrice, _ = strconv.ParseFloat(tickerData[1].(string), 64)
 				t.LowestAsk, _ = strconv.ParseFloat(tickerData[2].(string), 64)
 				t.HighestBid, _ = strconv.ParseFloat(tickerData[3].(string), 64)
@@ -193,11 +201,14 @@ func (p *Poloniex) WsHandleData() {
 				t.LowestTradePrice24H, _ = strconv.ParseFloat(tickerData[9].(string), 64)
 
 				p.Websocket.DataHandler <- exchange.TickerData{
-					Timestamp: time.Now(),
-					Exchange:  p.GetName(),
-					AssetType: "SPOT",
-					LowPrice:  t.LowestAsk,
-					HighPrice: t.HighestBid,
+					Timestamp:  time.Now(),
+					Pair:       currencyPair,
+					AssetType:  assets.AssetTypeSpot,
+					Exchange:   p.GetName(),
+					LowPrice:   t.LowestAsk,
+					HighPrice:  t.HighestBid,
+					ClosePrice: t.LastPrice,
+					Quantity:   t.QuoteCurrencyVolume24H,
 				}
 			case ws24HourExchangeVolumeID:
 			case wsHeartbeat:
@@ -232,7 +243,7 @@ func (p *Poloniex) WsHandleData() {
 
 							p.Websocket.DataHandler <- exchange.WebsocketOrderbookUpdate{
 								Exchange: p.GetName(),
-								Asset:    "SPOT",
+								Asset:    assets.AssetTypeSpot,
 								Pair:     currency.NewPairFromString(currencyPair),
 							}
 						case "o":
@@ -245,7 +256,7 @@ func (p *Poloniex) WsHandleData() {
 
 							p.Websocket.DataHandler <- exchange.WebsocketOrderbookUpdate{
 								Exchange: p.GetName(),
-								Asset:    "SPOT",
+								Asset:    assets.AssetTypeSpot,
 								Pair:     currency.NewPairFromString(currencyPair),
 							}
 						case "t":
@@ -322,7 +333,8 @@ func (p *Poloniex) WsProcessOrderbookSnapshot(ob []interface{}, symbol string) e
 	var newOrderBook orderbook.Base
 	newOrderBook.Asks = asks
 	newOrderBook.Bids = bids
-	newOrderBook.AssetType = "SPOT"
+	newOrderBook.AssetType = assets.AssetTypeSpot
+	newOrderBook.LastUpdated = time.Now()
 	newOrderBook.Pair = currency.NewPairFromString(symbol)
 
 	return p.Websocket.Orderbook.LoadSnapshot(&newOrderBook, p.GetName(), false)
@@ -350,7 +362,7 @@ func (p *Poloniex) WsProcessOrderbookUpdate(target []interface{}, symbol string)
 			cP,
 			time.Now(),
 			p.GetName(),
-			"SPOT")
+			assets.AssetTypeSpot)
 	}
 
 	return p.Websocket.Orderbook.Update([]orderbook.Item{{Price: price, Amount: volume}},
@@ -358,7 +370,7 @@ func (p *Poloniex) WsProcessOrderbookUpdate(target []interface{}, symbol string)
 		cP,
 		time.Now(),
 		p.GetName(),
-		"SPOT")
+		assets.AssetTypeSpot)
 }
 
 // CurrencyPairID contains a list of IDS for currency pairs.

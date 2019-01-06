@@ -366,7 +366,7 @@ func (a *ANX) SendAuthenticatedHTTPRequest(path string, params map[string]interf
 	hmac := common.GetHMAC(common.HashSHA512, []byte(path+string("\x00")+string(PayloadJSON)), []byte(a.API.Credentials.Secret))
 	headers := make(map[string]string)
 	headers["Rest-Key"] = a.API.Credentials.Key
-	headers["Rest-Sign"] = common.Base64Encode([]byte(hmac))
+	headers["Rest-Sign"] = common.Base64Encode(hmac)
 	headers["Content-Type"] = "application/json"
 
 	return a.SendPayload(http.MethodPost, a.API.Endpoints.URL+path, headers, bytes.NewBuffer(PayloadJSON), result, true, a.Verbose)

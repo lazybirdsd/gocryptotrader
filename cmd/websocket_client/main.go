@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/thrasher-/gocryptotrader/common"
 	"github.com/thrasher-/gocryptotrader/config"
+	"github.com/thrasher-/gocryptotrader/exchanges/assets"
 )
 
 // Vars for the websocket client
@@ -40,9 +41,9 @@ type WebsocketEventResponse struct {
 // WebsocketOrderbookTickerRequest is a struct used for ticker and orderbook
 // requests
 type WebsocketOrderbookTickerRequest struct {
-	Exchange  string `json:"exchangeName"`
-	Currency  string `json:"currency"`
-	AssetType string `json:"assetType"`
+	Exchange  string           `json:"exchangeName"`
+	Currency  string           `json:"currency"`
+	AssetType assets.AssetType `json:"assetType"`
 }
 
 // SendWebsocketEvent sends a websocket event message
@@ -79,7 +80,7 @@ func main() {
 		log.Fatalf("Failed to load config file: %s", err)
 	}
 
-	listenAddr := cfg.WebsocketServer.ListenAddress
+	listenAddr := cfg.RemoteControl.WebsocketRPC.ListenAddress
 	wsHost := fmt.Sprintf("ws://%s:%d/ws", common.ExtractHost(listenAddr),
 		common.ExtractPort(listenAddr))
 	log.Printf("Connecting to websocket host: %s", wsHost)
@@ -95,8 +96,8 @@ func main() {
 	log.Println("Authenticating..")
 	var wsResp WebsocketEventResponse
 	reqData := WebsocketAuth{
-		Username: cfg.Webserver.AdminUsername,
-		Password: common.HexEncodeToString(common.GetSHA256([]byte(cfg.Webserver.AdminPassword))),
+		Username: cfg.RemoteControl.Username,
+		Password: common.HexEncodeToString(common.GetSHA256([]byte(cfg.RemoteControl.Password))),
 	}
 	err = SendWebsocketEvent("auth", reqData, &wsResp)
 	if err != nil {
@@ -155,7 +156,7 @@ func main() {
 	dataReq := WebsocketOrderbookTickerRequest{
 		Exchange:  "Bitfinex",
 		Currency:  "BTCUSD",
-		AssetType: "SPOT",
+		AssetType: assets.AssetTypeSpot,
 	}
 
 	err = SendWebsocketEvent("GetTicker", dataReq, &wsResp)

@@ -287,7 +287,7 @@ func TestGetSpecificOrderbook(t *testing.T) {
 		t.Fatal("Unexpected result", err)
 	}
 
-	ob, err := GetSpecificOrderbook("BTCUSD", "Bitstamp", assets.AssetTypeSpot)
+	ob, err := GetSpecificOrderbook(currency.NewPairFromString("BTCUSD"), "Bitstamp", assets.AssetTypeSpot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +296,7 @@ func TestGetSpecificOrderbook(t *testing.T) {
 		t.Fatal("Unexpected result")
 	}
 
-	ob, err = GetSpecificOrderbook("ETHLTC", "Bitstamp", asset)
+	ob, err = GetSpecificOrderbook(currency.NewPairFromStrings("ETH", "LTC"), "Bitstamp", asset)
 	if err == nil {
 		t.Fatal("Unexpected result")
 	}
@@ -317,7 +317,7 @@ func TestGetSpecificTicker(t *testing.T) {
 		t.Fatal("Test failed. ProcessTicker error", err)
 	}
 
-	tick, err := GetSpecificTicker("BTCUSD", "Bitstamp", asset)
+	tick, err := GetSpecificTicker(currency.NewPairFromStrings("BTC", "USD"), "Bitstamp", asset)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func TestGetSpecificTicker(t *testing.T) {
 		t.Fatal("Unexpected result")
 	}
 
-	tick, err = GetSpecificTicker("ETHLTC", "Bitstamp", asset)
+	tick, err = GetSpecificTicker(currency.NewPairFromStrings("ETH", "LTC"), "Bitstamp", asset)
 	if err == nil {
 		t.Fatal("Unexpected result")
 	}

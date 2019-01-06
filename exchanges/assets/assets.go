@@ -53,7 +53,7 @@ func (a AssetTypes) Contains(asset AssetType) bool {
 }
 
 // JoinToString joins an asset type array and converts it to a string
-// with the supplied seperator
+// with the supplied separator
 func (a AssetTypes) JoinToString(separator string) string {
 	return strings.Join(a.ToStringArray(), separator)
 }

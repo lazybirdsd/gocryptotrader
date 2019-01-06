@@ -227,12 +227,10 @@ func (e *Base) GetLastPairsUpdateTime() int64 {
 func (e *Base) SetAssetTypes() {
 	if e.Config.CurrencyPairs.AssetTypes == "" {
 		e.Config.CurrencyPairs.AssetTypes = e.CurrencyPairs.AssetTypes.JoinToString(",")
-	} else {
-		if e.Config.CurrencyPairs.AssetTypes != e.CurrencyPairs.AssetTypes.JoinToString(",") {
-			e.Config.CurrencyPairs.AssetTypes = e.CurrencyPairs.AssetTypes.JoinToString(",")
-			if e.IsAssetTypeSupported(assets.AssetTypeFutures) {
-				e.Config.CurrencyPairs.Futures = new(config.CurrencyPairConfig)
-			}
+	} else if e.Config.CurrencyPairs.AssetTypes != e.CurrencyPairs.AssetTypes.JoinToString(",") {
+		e.Config.CurrencyPairs.AssetTypes = e.CurrencyPairs.AssetTypes.JoinToString(",")
+		if e.IsAssetTypeSupported(assets.AssetTypeFutures) {
+			e.Config.CurrencyPairs.Futures = new(config.CurrencyPairConfig)
 		}
 	}
 }
@@ -299,23 +297,21 @@ func (e *Base) SetCurrencyPairFormat() {
 				Index:     e.CurrencyPairs.ConfigFormat.Index,
 			}
 		}
-	} else {
-		if e.Features.Supports.Trading.Spot {
-			if e.Config.CurrencyPairs.Spot.ConfigFormat == nil {
-				e.Config.CurrencyPairs.Spot.ConfigFormat = &config.CurrencyPairFormatConfig{
-					Delimiter: e.CurrencyPairs.Spot.ConfigFormat.Delimiter,
-					Uppercase: e.CurrencyPairs.Spot.ConfigFormat.Uppercase,
-					Separator: e.CurrencyPairs.Spot.ConfigFormat.Separator,
-					Index:     e.CurrencyPairs.Spot.ConfigFormat.Index,
-				}
+	} else if e.Features.Supports.Trading.Spot {
+		if e.Config.CurrencyPairs.Spot.ConfigFormat == nil {
+			e.Config.CurrencyPairs.Spot.ConfigFormat = &config.CurrencyPairFormatConfig{
+				Delimiter: e.CurrencyPairs.Spot.ConfigFormat.Delimiter,
+				Uppercase: e.CurrencyPairs.Spot.ConfigFormat.Uppercase,
+				Separator: e.CurrencyPairs.Spot.ConfigFormat.Separator,
+				Index:     e.CurrencyPairs.Spot.ConfigFormat.Index,
 			}
-			if e.Config.CurrencyPairs.Spot.RequestFormat == nil {
-				e.Config.CurrencyPairs.Spot.RequestFormat = &config.CurrencyPairFormatConfig{
-					Delimiter: e.CurrencyPairs.Spot.RequestFormat.Delimiter,
-					Uppercase: e.CurrencyPairs.Spot.RequestFormat.Uppercase,
-					Separator: e.CurrencyPairs.Spot.RequestFormat.Separator,
-					Index:     e.CurrencyPairs.Spot.RequestFormat.Index,
-				}
+		}
+		if e.Config.CurrencyPairs.Spot.RequestFormat == nil {
+			e.Config.CurrencyPairs.Spot.RequestFormat = &config.CurrencyPairFormatConfig{
+				Delimiter: e.CurrencyPairs.Spot.RequestFormat.Delimiter,
+				Uppercase: e.CurrencyPairs.Spot.RequestFormat.Uppercase,
+				Separator: e.CurrencyPairs.Spot.RequestFormat.Separator,
+				Index:     e.CurrencyPairs.Spot.RequestFormat.Index,
 			}
 		}
 	}
@@ -440,19 +436,19 @@ func (e *Base) IsEnabled() bool {
 }
 
 // SetAPIKeys is a method that sets the current API keys for the exchange
-func (e *Base) SetAPIKeys(APIKey, APISecret, ClientID string) {
-	e.API.Credentials.Key = APIKey
-	e.API.Credentials.ClientID = ClientID
+func (e *Base) SetAPIKeys(apiKey, apiSecret, clientID string) {
+	e.API.Credentials.Key = apiKey
+	e.API.Credentials.ClientID = clientID
 
 	if e.API.CredentialsValidator.RequiresBase64DecodeSecret {
-		result, err := common.Base64Decode(APISecret)
+		result, err := common.Base64Decode(apiSecret)
 		if err != nil {
 			e.API.AuthenticatedSupport = false
 			log.Warnf(warningBase64DecryptSecretKeyFailed, e.Name)
 		}
 		e.API.Credentials.Secret = string(result)
 	} else {
-		e.API.Credentials.Secret = APISecret
+		e.API.Credentials.Secret = apiSecret
 	}
 }
 
@@ -465,7 +461,7 @@ func (e *Base) SetupDefaults(exch *config.ExchangeConfig) error {
 
 	e.API.AuthenticatedSupport = exch.API.AuthenticatedSupport
 	if e.API.AuthenticatedSupport {
-		e.SetAPIKeys(exch.API.Credentials.Key, exch.API.Credentials.Secret, e.API.Credentials.ClientID)
+		e.SetAPIKeys(exch.API.Credentials.Key, exch.API.Credentials.Secret, exch.API.Credentials.ClientID)
 	}
 
 	if exch.HTTPTimeout <= time.Duration(0) {
@@ -551,7 +547,7 @@ func (e *Base) ValidateAPICredentials() bool {
 		}
 	}
 
-	if e.API.CredentialsValidator.RequiresBase64DecodeSecret {
+	if e.API.CredentialsValidator.RequiresBase64DecodeSecret && !e.LoadedByConfig {
 		_, err := common.Base64Decode(e.API.Credentials.Secret)
 		if err != nil {
 			return false

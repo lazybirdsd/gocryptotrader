@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	totalWrappers = 17
+	totalWrappers = 20
 )
 
 func main() {
 	var err error
 	engine.Bot, err = engine.New()
 	if err != nil {
-		log.Fatalf("Failed to initalise engine. Err: %s", err)
+		log.Fatalf("Failed to initialise engine. Err: %s", err)
 	}
 
 	engine.Bot.Settings = engine.Settings{
@@ -121,24 +121,34 @@ func testWrappers(e exchange.IBotExchange) []string {
 		funcs = append(funcs, "SubmitOrder")
 	}
 
-	_, err = e.ModifyOrder(exchange.ModifyOrder{})
+	_, err = e.ModifyOrder(&exchange.ModifyOrder{})
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "ModifyOrder")
 	}
 
-	err = e.CancelOrder(exchange.OrderCancellation{})
+	err = e.CancelOrder(&exchange.OrderCancellation{})
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "CancelOrder")
 	}
 
-	_, err = e.CancelAllOrders(exchange.OrderCancellation{})
+	_, err = e.CancelAllOrders(&exchange.OrderCancellation{})
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "CancelAllOrders")
 	}
 
-	_, err = e.GetOrderInfo("-1")
+	_, err = e.GetOrderInfo("1")
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "GetOrderInfo")
+	}
+
+	_, err = e.GetOrderHistory(&exchange.GetOrdersRequest{})
+	if err == common.ErrNotYetImplemented {
+		funcs = append(funcs, "GetOrderHistory")
+	}
+
+	_, err = e.GetActiveOrders(&exchange.GetOrdersRequest{})
+	if err == common.ErrNotYetImplemented {
+		funcs = append(funcs, "GetActiveOrders")
 	}
 
 	_, err = e.GetDepositAddress(currency.BTC, "")
@@ -146,14 +156,18 @@ func testWrappers(e exchange.IBotExchange) []string {
 		funcs = append(funcs, "GetDepositAddress")
 	}
 
-	_, err = e.WithdrawCryptocurrencyFunds(exchange.WithdrawRequest{})
+	_, err = e.WithdrawCryptocurrencyFunds(&exchange.WithdrawRequest{})
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "WithdrawCryptocurrencyFunds")
 	}
 
-	_, err = e.WithdrawFiatFunds(exchange.WithdrawRequest{})
+	_, err = e.WithdrawFiatFunds(&exchange.WithdrawRequest{})
 	if err == common.ErrNotYetImplemented {
 		funcs = append(funcs, "WithdrawFiatFunds")
+	}
+	_, err = e.WithdrawFiatFundsToInternationalBank(&exchange.WithdrawRequest{})
+	if err == common.ErrNotYetImplemented {
+		funcs = append(funcs, "WithdrawFiatFundsToInternationalBank")
 	}
 
 	return funcs

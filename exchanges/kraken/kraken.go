@@ -249,12 +249,12 @@ func (k *Kraken) GetDepth(symbol string) (Orderbook, error) {
 	}
 
 	if result == nil {
-		return orderBook, fmt.Errorf("Kraken GetDepth result is nil")
+		return orderBook, fmt.Errorf("%s GetDepth result is nil", k.Name)
 	}
 
 	data := result.(map[string]interface{})
 	if data["result"] == nil {
-		return orderBook, fmt.Errorf("Kraken GetDepth data[result] is nil")
+		return orderBook, fmt.Errorf("%s GetDepth data[result] is nil", k.Name)
 	}
 	orderbookData := data["result"].(map[string]interface{})
 

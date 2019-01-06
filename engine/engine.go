@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 
@@ -28,10 +29,13 @@ type Engine struct {
 	Config                         *config.Config
 	Portfolio                      *portfolio.Base
 	Exchanges                      []exchange.IBotExchange
+	ExchangeCurrencyPairManager    *ExchangeCurrencyPairSyncer
+	OrderManager                   *OrderManager
 	CommsRelayer                   *communications.Communications
 	Shutdown                       chan bool
 	Settings                       Settings
 	CryptocurrencyDepositAddresses map[string]map[string]string
+	Uptime                         time.Time
 }
 
 // Vars for engine
@@ -79,21 +83,24 @@ func NewFromSettings(settings *Settings) (*Engine, error) {
 		return nil, fmt.Errorf("failed to open/create data directory: %s. Err: %s", settings.DataDir, err)
 	}
 
+	err = b.Config.CheckLoggerConfig()
+	if err != nil {
+		log.Errorf("Failed to configure logger. Err: %s", err)
+	}
+
+	err = log.SetupLogger()
+	if err != nil {
+		log.Errorf("Failed to setup logger. Err: %s", err)
+	}
+
 	b.Settings.ConfigFile = settings.ConfigFile
 	b.Settings.DataDir = settings.DataDir
-	b.Settings.LogFile = utils.GetLogFile(settings.DataDir)
+	b.Settings.LogFile = path.Join(log.LogPath, log.Logger.File)
 	b.CryptocurrencyDepositAddresses = make(map[string]map[string]string)
 
 	err = utils.AdjustGoMaxProcs(settings.GoMaxProcs)
 	if err != nil {
 		return nil, fmt.Errorf("unable to adjust runtime GOMAXPROCS value. Err: %s", err)
-	}
-
-	err = utils.InitLogFile(b.Settings.LogFile)
-	if err != nil {
-		log.Debugf("failed to create log file writer. Err: %s", err)
-	} else {
-		log.Debugf("Using log file: %s.\n", b.Settings.LogFile)
 	}
 
 	b.handleInterrupt()
@@ -113,16 +120,28 @@ func ValidateSettings(b *Engine, s *Settings) {
 	b.Settings.EnableCoinmarketcapAnalysis = s.EnableCoinmarketcapAnalysis
 
 	// TO-DO: FIXME
-	if flag.Lookup("websocketserver") != nil {
-		b.Settings.EnableWebsocketServer = s.EnableWebsocketServer
+	if flag.Lookup("grpc") != nil {
+		b.Settings.EnableGRPC = s.EnableGRPC
 	} else {
-		b.Settings.EnableWebsocketServer = b.Config.WebsocketServer.Enabled
+		b.Settings.EnableGRPC = b.Config.RemoteControl.GRPC.Enabled
 	}
 
-	if flag.Lookup("restserver") != nil {
-		b.Settings.EnableRESTServer = s.EnableRESTServer
+	if flag.Lookup("grpcproxy") != nil {
+		b.Settings.EnableGRPCProxy = s.EnableGRPCProxy
 	} else {
-		b.Settings.EnableRESTServer = b.Config.RESTServer.Enabled
+		b.Settings.EnableGRPCProxy = b.Config.RemoteControl.GRPC.GRPCProxyEnabled
+	}
+
+	if flag.Lookup("websocketrpc") != nil {
+		b.Settings.EnableWebsocketRPC = s.EnableWebsocketRPC
+	} else {
+		b.Settings.EnableWebsocketRPC = b.Config.RemoteControl.WebsocketRPC.Enabled
+	}
+
+	if flag.Lookup("deprecatedrpc") != nil {
+		b.Settings.EnableDeprecatedRPC = s.EnableDeprecatedRPC
+	} else {
+		b.Settings.EnableDeprecatedRPC = b.Config.RemoteControl.DeprecatedRPC.Enabled
 	}
 
 	b.Settings.EnableCommsRelayer = s.EnableCommsRelayer
@@ -191,15 +210,17 @@ func ValidateSettings(b *Engine, s *Settings) {
 // PrintSettings returns the engine settings
 func PrintSettings(s Settings) {
 	log.Debugln()
-	log.Debugln("ENGINE SETTINGS")
+	log.Debugf("ENGINE SETTINGS")
 	log.Debugf("- CORE SETTINGS:")
 	log.Debugf("\t Verbose mode: %v", s.Verbose)
 	log.Debugf("\t Enable dry run mode: %v", s.EnableDryRun)
 	log.Debugf("\t Enable all exchanges: %v", s.EnableAllExchanges)
 	log.Debugf("\t Enable all pairs: %v", s.EnableAllPairs)
 	log.Debugf("\t Enable portfolio watcher: %v", s.EnablePortfolioWatcher)
-	log.Debugf("\t Enable websocket server: %v", s.EnableWebsocketServer)
-	log.Debugf("\t Enable REST server: %v", s.EnableRESTServer)
+	log.Debugf("\t Enable gPRC: %v", s.EnableGRPC)
+	log.Debugf("\t Enable gRPC Proxy: %v", s.EnableGRPCProxy)
+	log.Debugf("\t Enable websocket RPC: %v", s.EnableWebsocketRPC)
+	log.Debugf("\t Enable deprecated RPC: %v", s.EnableDeprecatedRPC)
 	log.Debugf("\t Enable comms relayer: %v", s.EnableCommsRelayer)
 	log.Debugf("\t Enable event manager: %v", s.EnableEventManager)
 	log.Debugf("\t Event manager sleep delay: %v", s.EventManagerDelay)
@@ -230,6 +251,7 @@ func (e *Engine) Start() {
 		log.Fatal("Engine instance is nil")
 	}
 
+	e.Uptime = time.Now()
 	log.Debugf("Bot '%s' started.\n", e.Config.Name)
 
 	enabledExchanges := e.Config.CountEnabledExchanges()
@@ -292,11 +314,15 @@ func (e *Engine) Start() {
 
 	e.CryptocurrencyDepositAddresses = GetExchangeCryptocurrencyDepositAddresses()
 
-	if e.Settings.EnableRESTServer {
+	if e.Settings.EnableGRPC {
+		go StartRPCServer()
+	}
+
+	if e.Settings.EnableDeprecatedRPC {
 		go StartRESTServer()
 	}
 
-	if e.Settings.EnableWebsocketServer {
+	if e.Settings.EnableWebsocketRPC {
 		go StartWebsocketServer()
 		StartWebsocketHandler()
 	}
@@ -305,17 +331,38 @@ func (e *Engine) Start() {
 		go portfolio.StartPortfolioWatcher()
 	}
 
+	/*
+		exchangeSyncCfg := CurrencyPairSyncerConfig{
+			SyncTicker:       true,
+			SyncOrderbook:    true,
+			SyncContinuously: true,
+			NumWorkers:       15,
+		}
+
+
+			e.ExchangeCurrencyPairManager, err = NewCurrencyPairSyncer(exchangeSyncCfg)
+			if err != nil {
+				log.Warnf("Unable to initialise exchange currency pair syncer. Err: %s", err)
+			} else {
+				e.ExchangeCurrencyPairManager.Start()
+			}
+	*/
+
+	go StartOrderManagerRoutine()
+
 	if e.Settings.EnableTickerRoutine {
 		go TickerUpdaterRoutine()
 	}
+	/*
 
-	if e.Settings.EnableOrderbookRoutine {
-		go OrderbookUpdaterRoutine()
-	}
+		if e.Settings.EnableOrderbookRoutine {
+			go OrderbookUpdaterRoutine()
+		}
 
-	if e.Settings.EnableWebsocketRoutine {
-		go WebsocketRoutine()
-	}
+		if e.Settings.EnableWebsocketRoutine {
+			go WebsocketRoutine()
+		}
+	*/
 
 	if e.Settings.EnableEventManager {
 		go events.EventManger()
@@ -337,17 +384,13 @@ func (e *Engine) Stop() {
 		err := e.Config.SaveConfig(e.Settings.ConfigFile)
 
 		if err != nil {
-			log.Debugln("Unable to save config.")
+			log.Error("Unable to save config.")
 		} else {
 			log.Debugln("Config file saved successfully.")
 		}
 	}
-
 	log.Debugln("Exiting.")
-
-	if utils.LogFileHandle != nil {
-		utils.LogFileHandle.Close()
-	}
+	log.CloseLogFile()
 	os.Exit(0)
 }
 
